@@ -11,9 +11,11 @@ Terraform code to provision AWS infrastructure for the PFE project.
 - **`variables.tf`** - Variable declarations (AWS region, VPC CIDR, VPC name)
 - **`outputs.tf`** - Output values displayed after successful apply
 - **`vpc.tf`** - AWS VPC resource definition
+- **`route_table.tf`** - Route table configuration for the VPC
+- **`subnets.tf`** - Subnet definitions within the VPC
 
 ## Documentation
 
-See [Requirements Documentation](./REQUIREMENTS.md) for detailed provider versions, resources, inputs, and outputs.
+- [REQUIREMENTS.md](./REQUIREMENTS.md) : for detailed provider versions, resources, inputs, and outputs.
 
 For more information about **Terraform-docs cli**, refer to the official [Terraform CLI Documentation](https://terraform-docs.io/user-guide/introduction/).
