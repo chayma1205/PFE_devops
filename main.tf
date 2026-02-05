@@ -15,7 +15,11 @@ module "vpc" {
   public_subnet_suffix  = "pub"
   private_subnet_suffix = "prv"
 
+  igw_tags = {
+    Name = "${var.vpc_name}-igw"
+  }
+
   public_route_table_tags = {
-    Name = "public_rt"
+    Name = "${var.vpc_name}-public-rt"
   }
 }
