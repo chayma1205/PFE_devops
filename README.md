@@ -6,16 +6,11 @@ Terraform code to provision AWS infrastructure for the PFE project.
 
 - **`.gitignore`** - Files Git should ignore (state files, logs, temp files)
 - **`.terraform.lock.hcl`** - Locks provider versions for reproducible deployments
-- **`main.tf`** - Terraform configuration and required providers
-- **`providers.tf`** - AWS provider configuration with region settings
-- **`variables.tf`** - Variable declarations (AWS region, VPC CIDR, VPC name)
-- **`outputs.tf`** - Output values displayed after successful apply
-- **`vpc.tf`** - AWS VPC resource definition
-- **`route_table.tf`** - Route table configuration for the VPC
-- **`subnets.tf`** - Subnet definitions within the VPC
+- **`main.tf`** - Main Terraform configuration
+- **`providers.tf`** - AWS provider configuration with region settings and default tags
+- **`variables.tf`** - Variable declarations for AWS resources
+- **`outputs.tf`** - Output values for provisioned resources
 
 ## Documentation
 
-- [REQUIREMENTS.md](./REQUIREMENTS.md) : for detailed provider versions, resources, inputs, and outputs.
-
-For more information about **Terraform-docs cli**, refer to the official [Terraform CLI Documentation](https://terraform-docs.io/user-guide/introduction/).
+- [REQUIREMENTS.md](./REQUIREMENTS.md) - Detailed provider versions, module information, resources, inputs, and outputs

@@ -13,35 +13,35 @@
 
 ## Modules
 
-No modules.
+| Name | Source | Version |
+|------|--------|---------|
+| <a name="module_vpc"></a> [vpc](#module_vpc) | terraform-aws-modules/vpc/aws | ~> 6.6 |
 
-## Resources
-
-| Name | Type |
-|------|------|
-| [aws_internet_gateway.igw](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/internet_gateway) | resource |
-| [aws_route_table.public](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table) | resource |
-| [aws_route_table_association.a](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table_association) | resource |
-| [aws_subnet.public_1](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/subnet) | resource |
-| [aws_vpc.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc) | resource |
 
 ## Inputs
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_aws_region"></a> [aws\_region](#input\_aws\_region) | The region for the provisioned aws infra | `string` | `"us-east-1"` | no |
-| <a name="input_igw_name"></a> [igw\_name](#input\_igw\_name) | the name of your igw | `string` | `"my_igw"` | no |
-| <a name="input_public_subnet_1_az"></a> [public\_subnet\_1\_az](#input\_public\_subnet\_1\_az) | subnet az | `string` | `"us-east-1a"` | no |
-| <a name="input_public_subnet_1_cidr"></a> [public\_subnet\_1\_cidr](#input\_public\_subnet\_1\_cidr) | public subnet cidr block | `string` | `"10.0.1.0/24"` | no |
-| <a name="input_public_subnet_1_name"></a> [public\_subnet\_1\_name](#input\_public\_subnet\_1\_name) | public subnet name | `string` | `"public_1"` | no |
-| <a name="input_route_table_name"></a> [route\_table\_name](#input\_route\_table\_name) | the name of your route tabe | `string` | `"public_rt"` | no |
-| <a name="input_vpc_cidr"></a> [vpc\_cidr](#input\_vpc\_cidr) | VPC cidr block | `string` | `"10.0.0.0/16"` | no |
-| <a name="input_vpc_name"></a> [vpc\_name](#input\_vpc\_name) | the name of your vpc | `string` | `"pfe_vpc"` | no |
+| **AWS Settings** |||||
+| <a name="input_aws_region"></a> [aws_region](#input_aws_region) | AWS region for provisioned infrastructure | `string` | `"us-east-1"` | no |
+| **VPC Configuration** |||||
+| <a name="input_vpc_name"></a> [vpc_name](#input_vpc_name) | The name of your VPC | `string` | `"my-vpc"` | no |
+| <a name="input_vpc_cidr"></a> [vpc_cidr](#input_vpc_cidr) | VPC CIDR block | `string` | `"10.0.0.0/16"` | no |
+| <a name="input_enable_dns_hostnames"></a> [enable_dns_hostnames](#input_enable_dns_hostnames) | Enable DNS hostnames in the VPC | `bool` | `true` | no |
+| <a name="input_enable_dns_support"></a> [enable_dns_support](#input_enable_dns_support) | Enable DNS resolution in the VPC | `bool` | `true` | no |
+| <a name="input_vpc_azs"></a> [vpc_azs](#input_vpc_azs) | Availability zones for subnets within the VPC | `list(string)` | n/a | yes |
+| **Subnet Configuration** |||||
+| <a name="input_public_subnets_cidrs"></a> [public_subnets_cidrs](#input_public_subnets_cidrs) | CIDR blocks for public subnets (one per AZ) | `list(string)` | `[]` | no |
+| <a name="input_private_subnets_cidrs"></a> [private_subnets_cidrs](#input_private_subnets_cidrs) | CIDR blocks for private subnets (one per AZ) | `list(string)` | `[]` | no |
 
 ## Outputs
 
 | Name | Description |
 |------|-------------|
-| <a name="output_public_subnet_1_cidr"></a> [public\_subnet\_1\_cidr](#output\_public\_subnet\_1\_cidr) | cidr block of the public subnet |
-| <a name="output_vpc_cidr_block"></a> [vpc\_cidr\_block](#output\_vpc\_cidr\_block) | the cidr block of the VPC |
-| <a name="output_vpc_id"></a> [vpc\_id](#output\_vpc\_id) | the id of the VPC |
+| <a name="output_vpc_id"></a> [vpc_id](#output_vpc_id) | the id of the VPC |
+| <a name="output_vpc_cidr_block"></a> [vpc_cidr_block](#output_vpc_cidr_block) | the cidr block of the VPC |
+| <a name="output_public_subnet_ids"></a> [public_subnet_ids](#output_public_subnet_ids) | List of ids of public subnets |
+| <a name="output_private_subnet_ids"></a> [private_subnet_ids](#output_private_subnet_ids) | List of ids of private subnets |
+| <a name="output_public_route_table_ids"></a> [public_route_table_ids](#output_public_route_table_ids) | List of ids of public route tables |
+| <a name="output_private_route_table_ids"></a> [private_route_table_ids](#output_private_route_table_ids) | List of ids of private route tables |
+| <a name="output_igw_id"></a> [igw_id](#output_igw_id) | the id of the Internet Gateway |
