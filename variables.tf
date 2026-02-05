@@ -13,24 +13,12 @@ variable "vpc_cidr" {
 variable "vpc_name" {
   type        = string
   description = "the name of your vpc"
-  default     = "pfe_vpc"
+  default     = "my-vpc"
 }
 
 variable "vpc_azs" {
   type        = list(string)
   description = "the availability zones of subnets within the vpc"
-}
-
-variable "private_subnets_cidrs" {
-  type        = list(string)
-  description = "the list of cidr blocks for the private subnets"
-  default     = []
-}
-
-variable "public_subnets_cidrs" {
-  type        = list(string)
-  description = "the list of cidr blocks for the public subnets"
-  default     = []
 }
 
 variable "enable_dns_hostnames" {
@@ -43,4 +31,16 @@ variable "enable_dns_support" {
   type        = bool
   description = "enable or desable dns support withing a vpc"
   default     = true
+}
+
+variable "private_subnets_cidrs" {
+  type        = list(string)
+  description = "the list of cidr blocks for the private subnets"
+  default     = []
+}
+
+variable "public_subnets_cidrs" {
+  type        = list(string)
+  description = "the list of cidr blocks for the public subnets"
+  default     = []
 }

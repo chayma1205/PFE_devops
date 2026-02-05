@@ -1,14 +1,3 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 6.30"
-    }
-  }
-
-  required_version = ">= 1.1"
-}
-
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 6.6"
@@ -23,7 +12,10 @@ module "vpc" {
   enable_dns_hostnames = var.enable_dns_hostnames
   enable_dns_support   = var.enable_dns_support
 
-  tags = {
-    Name = var.vpc_name
+  public_subnet_suffix  = "pub"
+  private_subnet_suffix = "prv"
+
+  public_route_table_tags = {
+    Name = "public_rt"
   }
 }
