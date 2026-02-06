@@ -16,11 +16,21 @@ variable "azs" {
 variable "public_subnets" {
   type = list(string)
   description = "public subnets cidr blcoks"
+
+  validation {
+    condition = length(var.public_subnets) <= length(var.azs)
+    error_message = "the number of public_subnets must not exceed match the number of azs"
+  }
 }
 
 variable "private_subnets" {
   type = list(string)
   description = "private subnets cidr blocks"
+
+  validation {
+    condition = length(var.private_subnets) <= length(var.azs)
+    error_message = "the number of private_subnets must not exceed the number of azs"
+  }
 }
 
 variable "enable_nat_gateway" {
