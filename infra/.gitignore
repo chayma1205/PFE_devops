@@ -1,0 +1,12 @@
+# Terraform directories
+.terraform/
+
+# Terraform state files
+*.tfstate
+*.tfstate.*
+
+# Terraform variables 
+*.tfvars
+
+# CLI configuration files
+.terraform.lock.hcl
