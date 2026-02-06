@@ -1,25 +1,16 @@
 module "vpc" {
-  source  = "terraform-aws-modules/vpc/aws"
-  version = "~> 6.6"
+  source = "./modules/custom-vpc"
 
-  name = var.vpc_name
-  cidr = var.vpc_cidr
+  name            = "custom"
+  cidr            = "10.0.0.0/16"
+  azs             = ["us-east-2a", "us-east-2b"]
+  public_subnets  = ["10.0.1.0/24", "10.0.2.0/24"]
+  private_subnets = ["10.0.101.0/24", "10.0.102.0/24"]
 
-  azs             = var.vpc_azs
-  private_subnets = var.private_subnets_cidrs
-  public_subnets  = var.public_subnets_cidrs
+  enable_nat_gateway = true
 
-  enable_dns_hostnames = var.enable_dns_hostnames
-  enable_dns_support   = var.enable_dns_support
-
-  public_subnet_suffix  = "pub"
-  private_subnet_suffix = "prv"
-
-  igw_tags = {
-    Name = "${var.vpc_name}-igw"
-  }
-
-  public_route_table_tags = {
-    Name = "${var.vpc_name}-public-rt"
+  tags = {
+    Environment = "dev"
+    ManagedBy   = "terraform"
   }
 }
