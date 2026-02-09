@@ -1,11 +1,19 @@
-variable "vpc_cidr" {}
-variable "vpc_name" {}
+variable "vpc_name" {
+  type = string
+}
 
-variable "public_subnet_a_cidr" {}
-variable "public_subnet_b_cidr" {}
+variable "vpc_cidr" {
+  type = string
+}
 
-variable "private_subnet_a_cidr" {}
-variable "private_subnet_b_cidr" {}
+variable "azs" {
+  type = list(string)
+}
 
-variable "az_a" {}
-variable "az_b" {}
+variable "public_subnets" {
+  type = list(string)
+}
+
+variable "private_subnets" {
+  type = list(string)
+}
