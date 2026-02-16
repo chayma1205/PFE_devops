@@ -104,5 +104,5 @@ module "ecs_1" {
 
   create_cloudwatch_log_group = false
 
-  cluster_capacity_providers = ["asg_cp_1"]
+  cluster_capacity_providers = ["FARGATE", "FARGATE_SPOT", "asg_cp_1"]
 }
