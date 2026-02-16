@@ -59,8 +59,6 @@ resource "aws_iam_instance_profile" "ecs_instance_profile" {
 module "asg_1" {
   source = "terraform-aws-modules/autoscaling/aws"
 
-  depends_on = [module.vpc]
-
   name               = var.asg_name
   use_name_prefix    = false
   min_size           = var.asg_min_size
@@ -74,6 +72,12 @@ module "asg_1" {
   instance_type               = var.asg_instance_type
   enable_monitoring           = true
 
+  user_data = base64encode(<<-EOF
+#!/bin/bash
+echo "ECS_CLUSTER=${var.cluster_name}" >> /etc/ecs/ecs.config
+EOF
+  )
+
   create_iam_instance_profile = false
   iam_instance_profile_arn    = aws_iam_instance_profile.ecs_instance_profile.arn
 
@@ -84,8 +88,7 @@ module "asg_1" {
 
 
 module "ecs_1" {
-  source     = "terraform-aws-modules/ecs/aws"
-  depends_on = [module.asg_1]
+  source = "terraform-aws-modules/ecs/aws"
 
   cluster_name = var.cluster_name
 
@@ -94,16 +97,12 @@ module "ecs_1" {
     asg_cp_1 = {
       auto_scaling_group_provider = {
         auto_scaling_group_arn = module.asg_1.autoscaling_group_arn
-        # managed_scaling = {
-        #   status = "ENABLED"
-        #   target_capacity           = 100
-        #   minimum_scaling_step_size = 1
-        #   maximum_scaling_step_size = 100
-        # }
       }
     }
 
   }
+
+  create_cloudwatch_log_group = false
 
   cluster_capacity_providers = ["asg_cp_1"]
 }
