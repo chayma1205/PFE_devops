@@ -24,38 +24,64 @@ module "vpc" {
   }
 }
 
+# create a single IAM role for all ECS instances
+resource "aws_iam_role" "ecs_instance_role" {
+  name        = "${var.vpc_name}-ecs-instance-role"
+  path        = "/ecs/"
+  description = "ECS instance role allowing EC2 instances to register with ECS cluster, pull ECR images, and write CloudWatch logs"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  depends_on = [module.vpc]
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_instance_role_policy" {
+  role       = aws_iam_role.ecs_instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+}
+
+resource "aws_iam_instance_profile" "ecs_instance_profile" {
+  name = "${var.vpc_name}-ecs-instance-profile"
+  role = aws_iam_role.ecs_instance_role.name
+}
+
 module "asg" {
   source = "terraform-aws-modules/autoscaling/aws"
 
-
-
-  count = length(var.asg_names)
+  count      = length(var.asg_names)
+  depends_on = [module.vpc]
 
   # Autoscaling group config
-  name                = var.asg_names[count.index]
-  min_size            = var.asg_min_sizes[count.index]
-  max_size            = var.asg_max_sizes[count.index]
-  desired_capacity    = var.asg_desired_capacities[count.index]
-  vpc_zone_identifier = var.vpc_azs[*]
+  name               = var.asg_names[count.index]
+  use_name_prefix    = false
+  min_size           = var.asg_min_sizes[count.index]
+  max_size           = var.asg_max_sizes[count.index]
+  desired_capacity   = var.asg_desired_capacities[count.index]
+  availability_zones = var.vpc_azs[*]
 
   # Launch template config
   launch_template_name        = var.asg_launch_template_name
   launch_template_description = var.asg_launch_template_description
-  launch_template_id          = var.asg_image_id
+  image_id                    = var.asg_image_id
   instance_type               = var.asg_instance_type
   enable_monitoring           = true
 
-  # IAM role config
-  # IAM instance profile is required to grant EC2 instances the necessary permissions to:
-  # - Register with the ECS cluster and communicate with the ECS service
-  # - Pull container images from ECR (Elastic Container Registry)
-  # - Send logs to CloudWatch Logs
-  # - Access other AWS services required by containerized applications
-  create_iam_instance_profile = true
-  iam_role_name               = "ecs"
-  iam_role_path               = "/ecs/"
-  iam_role_description        = "ECS instance role allowing EC2 instances to register with ECS cluster, pull ECR images, and write CloudWatch logs"
-  iam_role_policies = {
-    AmazonEC2ContainerServiceforEC2Role = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+  # IAM config
+  create_iam_instance_profile = false
+  iam_instance_profile_arn    = aws_iam_instance_profile.ecs_instance_profile.arn
+
+  tags = {
+    Name = "${var.vpc_name}-${var.asg_names[count.index]}"
   }
 }
