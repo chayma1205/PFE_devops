@@ -1,3 +1,7 @@
+#########
+# VPC
+#########
+
 variable "aws_region" {
   type        = string
   description = "The region for the provisioned aws infra"
@@ -44,3 +48,28 @@ variable "public_subnets_cidrs" {
   description = "the list of cidr blocks for the public subnets"
   default     = []
 }
+
+#########
+# ASG
+#########
+
+variable "asg_names" {
+  type        = list(string)
+  description = "list of asg names"
+}
+
+variable "asg_min_sizes" {
+  type        = list(number)
+  description = "list of minimum sizes for each auto scaling group"
+}
+
+variable "asg_max_sizes" {
+  type        = list(number)
+  description = "list of maximum sizes for each auto scaling group"
+}
+
+variable "asg_desired_capacities" {
+  type        = list(number)
+  description = "list of desired capacities for each auto scaling group"
+}
+

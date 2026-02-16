@@ -23,3 +23,14 @@ module "vpc" {
     Name = "${var.vpc_name}-public-rt"
   }
 }
+
+module "asg" {
+  source  = "terraform-aws-modules/autoscaling/aws"
+  count = length(var.asg_names)
+
+  name = var.asg_names[count.index]
+  min_size = var.asg_min_sizes[count.index]
+  max_size = var.asg_max_sizes[count.index]
+  desired_capacity = var.asg_desired_capacities[count.index]
+  vpc_zone_identifier = var.vpc_azs[*]
+}
