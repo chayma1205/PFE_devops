@@ -94,7 +94,7 @@ module "ecs_1" {
 
   capacity_providers = {
 
-    asg_cp_1 = {
+    asg_1_cp = {
       auto_scaling_group_provider = {
         auto_scaling_group_arn = module.asg_1.autoscaling_group_arn
       }
@@ -104,5 +104,42 @@ module "ecs_1" {
 
   create_cloudwatch_log_group = false
 
-  cluster_capacity_providers = ["FARGATE", "FARGATE_SPOT", "asg_cp_1"]
+  cluster_capacity_providers = ["FARGATE", "FARGATE_SPOT", "asg_1_cp"]
+
+  # defining services
+  services = {
+    frontend-task-definition = {
+      cpu    = 1024
+      memory = 1024
+
+      desired_count = 2
+
+      capacity_provider_strategy = {
+        asg_1_cp = {
+          capacity_provider = "asg_1_cp"
+        }
+      }
+
+      subnet_ids = module.vpc.public_subnets
+
+      # containers definitions
+      container_definitions = {
+
+        frontend = {
+          essential = true
+          image     = "maissendev/todo-frontend"
+
+          port_mappings = [
+            {
+              containerPort = 5500
+              protocol      = "tcp"
+            }
+          ]
+
+          enable_cloudwatch_logging = false
+        }
+
+      }
+    }
+  }
 }
