@@ -56,32 +56,54 @@ resource "aws_iam_instance_profile" "ecs_instance_profile" {
   role = aws_iam_role.ecs_instance_role.name
 }
 
-module "asg" {
+module "asg_1" {
   source = "terraform-aws-modules/autoscaling/aws"
 
-  count      = length(var.asg_names)
   depends_on = [module.vpc]
 
-  # Autoscaling group config
-  name               = var.asg_names[count.index]
+  name               = var.asg_name
   use_name_prefix    = false
-  min_size           = var.asg_min_sizes[count.index]
-  max_size           = var.asg_max_sizes[count.index]
-  desired_capacity   = var.asg_desired_capacities[count.index]
-  availability_zones = var.vpc_azs[*]
+  min_size           = var.asg_min_size
+  max_size           = var.asg_max_size
+  desired_capacity   = var.asg_desired_capacity
+  availability_zones = var.vpc_azs
 
-  # Launch template config
   launch_template_name        = var.asg_launch_template_name
   launch_template_description = var.asg_launch_template_description
   image_id                    = var.asg_image_id
   instance_type               = var.asg_instance_type
   enable_monitoring           = true
 
-  # IAM config
   create_iam_instance_profile = false
   iam_instance_profile_arn    = aws_iam_instance_profile.ecs_instance_profile.arn
 
   tags = {
-    Name = "${var.vpc_name}-${var.asg_names[count.index]}"
+    Name = "${var.vpc_name}-${var.asg_name}"
   }
+}
+
+
+module "ecs_1" {
+  source     = "terraform-aws-modules/ecs/aws"
+  depends_on = [module.asg_1]
+
+  cluster_name = var.cluster_name
+
+  capacity_providers = {
+
+    asg_cp_1 = {
+      auto_scaling_group_provider = {
+        auto_scaling_group_arn = module.asg_1.autoscaling_group_arn
+        # managed_scaling = {
+        #   status = "ENABLED"
+        #   target_capacity           = 100
+        #   minimum_scaling_step_size = 1
+        #   maximum_scaling_step_size = 100
+        # }
+      }
+    }
+
+  }
+
+  cluster_capacity_providers = ["asg_cp_1"]
 }

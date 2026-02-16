@@ -53,24 +53,24 @@ variable "public_subnets_cidrs" {
 # ASG
 #########
 
-variable "asg_names" {
-  type        = list(string)
-  description = "list of asg names"
+variable "asg_name" {
+  type        = string
+  description = "ASG name"
 }
 
-variable "asg_min_sizes" {
-  type        = list(number)
-  description = "list of minimum sizes for each auto scaling group"
+variable "asg_min_size" {
+  type        = number
+  description = "Minimum instances"
 }
 
-variable "asg_max_sizes" {
-  type        = list(number)
-  description = "list of maximum sizes for each auto scaling group"
+variable "asg_max_size" {
+  type        = number
+  description = "Maximum instances"
 }
 
-variable "asg_desired_capacities" {
-  type        = list(number)
-  description = "list of desired capacities for each auto scaling group"
+variable "asg_desired_capacity" {
+  type        = number
+  description = "Desired instances"
 }
 
 variable "asg_launch_template_name" {
@@ -91,4 +91,13 @@ variable "asg_image_id" {
 variable "asg_instance_type" {
   type        = string
   description = "ec2 instance type"
+}
+
+#########
+# ECS
+#########
+
+variable "cluster_name" {
+  type        = string
+  description = "ecs cluster name"
 }
