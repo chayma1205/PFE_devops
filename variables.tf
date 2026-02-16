@@ -73,3 +73,22 @@ variable "asg_desired_capacities" {
   description = "list of desired capacities for each auto scaling group"
 }
 
+variable "asg_launch_template_name" {
+  type        = string
+  description = "name of the launch template"
+}
+
+variable "asg_launch_template_description" {
+  type        = string
+  description = "description for the launch template"
+}
+
+variable "asg_image_id" {
+  type        = string
+  description = "ami id to use for the instances"
+}
+
+variable "asg_instance_type" {
+  type        = string
+  description = "ec2 instance type"
+}
