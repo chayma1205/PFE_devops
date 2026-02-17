@@ -26,114 +26,98 @@ module "vpc" {
     Name = "${var.vpc_name}-public-rt"
   }
 }
-# ALB Security Group
-resource "aws_security_group" "alb_sg" {
-  name        = "alb-sg"
-  description = "Allow HTTP inbound traffic"
-  vpc_id      = module.vpc.vpc_id
+module "asg" {
+  source  = "terraform-aws-modules/autoscaling/aws"
 
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  name = "ecs-ec2-asg"
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
+  min_size         = 1
+  max_size         = 2
+  desired_capacity = 1
 
-# EC2 Security Group
-resource "aws_security_group" "ec2_sg" {
-  name   = "ec2-sg"
-  vpc_id = module.vpc.vpc_id
+  vpc_zone_identifier = module.vpc.public_subnets
+  key_name = "ecs-debug-key"
 
-  ingress {
-    from_port       = 80
-    to_port         = 80
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb_sg.id]
-  }
+  health_check_type   = "EC2"
+  # Network interface to get public IP
+  network_interfaces = [
+    {
+      device_index               = 0
+      subnet_id                  = module.vpc.public_subnets[0]
+      associate_public_ip_address = true
+      # optional: security group
+      security_groups = []
+    }
+  ]
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-resource "aws_launch_template" "app" {
-  name_prefix   = "app-lt-"
-  image_id      = "ami-0c02fb55956c7d316" # Amazon Linux 2 us-east-1
-  instance_type = "t2.micro"
+  # Launch template
+  launch_template_name   = "ecs-ec2-lt"
+  update_default_version = true
 
-  vpc_security_group_ids = [aws_security_group.ec2_sg.id]
-
-  user_data = base64encode(<<-EOF
-              #!/bin/bash
-              yum update -y
-              yum install -y httpd
-              systemctl start httpd
-              systemctl enable httpd
-              echo "Hello from Terraform ASG instance" > /var/www/html/index.html
-              EOF
+  image_id      = data.aws_ami.ecs_optimized.id
+  instance_type = "t3.micro"
+  user_data = base64encode(<<EOF
+  #!/bin/bash
+  echo "ECS_CLUSTER=${var.cluster_name}" >> /etc/ecs/ecs.config
+  EOF
   )
-}
 
-resource "aws_lb_target_group" "app_tg" {
-  name     = "app-tg"
-  port     = 80
-  protocol = "HTTP"
-  vpc_id   = module.vpc.vpc_id
 
-  health_check {
-    path                = "/"
-    protocol            = "HTTP"
-    matcher             = "200"
-    interval            = 30
-    timeout             = 5
-    healthy_threshold   = 2
-    unhealthy_threshold = 2
-  }
-}
-resource "aws_lb" "app_alb" {
-  name               = "app-alb"
-  load_balancer_type = "application"
-  subnets            = module.vpc.public_subnets
-  security_groups    = [aws_security_group.alb_sg.id]
-}
 
-resource "aws_lb_listener" "http" {
-  load_balancer_arn = aws_lb.app_alb.arn
-  port              = 80
-  protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.app_tg.arn
-  }
-}
-resource "aws_autoscaling_group" "app_asg" {
-  name                      = "app-asg"
-  desired_capacity          = 2
-  min_size                  = 1
-  max_size                  = 3
-  vpc_zone_identifier       = module.vpc.public_subnets
-  target_group_arns         = [aws_lb_target_group.app_tg.arn]
-  health_check_type         = "ELB"
-
-  launch_template {
-    id      = aws_launch_template.app.id
-    version = "$Latest"
+  create_iam_instance_profile = true
+  iam_role_name               = "ecsInstanceRole"
+  iam_role_policies = {
+    AmazonEC2ContainerServiceforEC2Role = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
   }
 
-  tag {
-    key                 = "Name"
-    value               = "asg-instance"
-    propagate_at_launch = true
+  tags = {
+    Environment = "dev"
+  
+  }
+  
+}
+data "aws_ami" "ecs_optimized" {
+  most_recent = true
+  owners      = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-ecs-hvm-*-x86_64-ebs"]
+  }
+}
+module "ecs_cluster" {
+  source  = "terraform-aws-modules/ecs/aws//modules/cluster"
+  version = "7.3.0"
+
+  name = var.cluster_name
+  create_cloudwatch_log_group = false
+
+
+  cluster_capacity_providers = ["ec2"]
+
+  default_capacity_provider_strategy = {
+    ec2 = {
+      weight = 100
+      base   = 1
+    }
+  }
+
+  capacity_providers = {
+    ec2 = {
+      auto_scaling_group_provider = {
+        auto_scaling_group_arn = module.asg.autoscaling_group_arn
+
+        managed_scaling = {
+          status          = "ENABLED"
+          target_capacity = 80
+        }
+
+        managed_termination_protection = "DISABLED"
+      }
+    }
+  }
+
+  tags = {
+    Environment = "dev"
   }
 }

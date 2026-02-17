@@ -44,3 +44,8 @@ variable "public_subnets_cidrs" {
   description = "the list of cidr blocks for the public subnets"
   default     = []
 }
+variable "cluster_name" {
+  description = "Name of the ECS cluster"
+  type        = string
+  default     = "ecs-ec2-cluster"
+}
