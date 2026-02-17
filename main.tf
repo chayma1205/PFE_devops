@@ -56,6 +56,30 @@ resource "aws_iam_instance_profile" "ecs_instance_profile" {
   role = aws_iam_role.ecs_instance_role.name
 }
 
+resource "aws_iam_role" "ecs_task_execution_role" {
+  name        = "${var.vpc_name}-ecs-task-exec-role"
+  path        = "/ecs/"
+  description = "ECS task execution role allowing ECS to pull images and write logs"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
 module "asg_1" {
   source = "terraform-aws-modules/autoscaling/aws"
 
@@ -120,11 +144,17 @@ module "ecs_1" {
         }
       }
 
+      # Tell ECS this is EC2-only, not Fargate
+      requires_compatibilities = ["EC2"]
+
       subnet_ids = module.vpc.public_subnets
+
+      task_exec_iam_role_arn      = aws_iam_role.ecs_task_execution_role.arn
+      create_task_exec_iam_role   = false
+      create_cloudwatch_log_group = false
 
       # containers definitions
       container_definitions = {
-
         frontend = {
           essential = true
           image     = "maissendev/todo-frontend"
@@ -136,9 +166,10 @@ module "ecs_1" {
             }
           ]
 
-          enable_cloudwatch_logging = false
+          # Completely disable CloudWatch logging
+          enable_cloudwatch_logging   = false
+          create_cloudwatch_log_group = false
         }
-
       }
     }
   }
