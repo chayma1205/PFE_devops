@@ -83,19 +83,21 @@ module "alb" {
       protocol = "HTTP"
 
       forward = {
-        target_group_key = "ecs-instances"
+        target_group_key = "ecs-frontend-tasks-tg"
       }
     }
   }
 
   target_groups = {
-    ecs-instances = {
-      name_prefix      = "web_ecs_tasks"
-      protocol         = "HTTP"
-      port             = 80
-      target_type      = "ip"
+    ecs-frontend-tasks-tg = {
+      name_prefix = "web_ecs_tasks"
+      protocol    = "HTTP"
+      port        = 80
+      target_type = "ip"
     }
   }
+
+  depends_on = [module.vpc]
 }
 
 # Auto Scaling Group
@@ -210,6 +212,15 @@ module "ecs_1" {
       desired_count = 1
       subnet_ids    = module.vpc.public_subnets
 
+      # alb config
+      load_balancer = {
+        service = {
+          target_group_arn = module.alb.target_groups["ecs-frontend-tasks-tg"].arn
+          container_name   = "frontend"
+          container_port   = 80
+        }
+      }
+
       security_group_rules = {
         ingress_http = {
           type        = "ingress"
@@ -223,5 +234,5 @@ module "ecs_1" {
     }
   }
 
-  depends_on = [module.web_asg]
+  depends_on = [module.web_asg, module.vpc, module.alb]
 }
