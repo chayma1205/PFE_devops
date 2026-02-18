@@ -117,43 +117,27 @@ module "ecs_1" {
   cluster_name = var.cluster_name
 
   capacity_providers = {
-
     asg_1_cp = {
       auto_scaling_group_provider = {
         auto_scaling_group_arn = module.asg_1.autoscaling_group_arn
       }
     }
-
   }
 
   create_cloudwatch_log_group = false
+  cluster_capacity_providers  = ["FARGATE", "FARGATE_SPOT", "asg_1_cp"]
 
-  cluster_capacity_providers = ["FARGATE", "FARGATE_SPOT", "asg_1_cp"]
-
-  # defining services
   services = {
     frontend-task-definition = {
+
+      # task definition attributes
       cpu    = 1024
       memory = 1024
-
-      desired_count = 2
-
-      capacity_provider_strategy = {
-        asg_1_cp = {
-          capacity_provider = "asg_1_cp"
-        }
-      }
-
-      # Tell ECS this is EC2-only, not Fargate
-      requires_compatibilities = ["EC2"]
-
-      subnet_ids = module.vpc.public_subnets
 
       task_exec_iam_role_arn      = aws_iam_role.ecs_task_execution_role.arn
       create_task_exec_iam_role   = false
       create_cloudwatch_log_group = false
 
-      # containers definitions
       container_definitions = {
         frontend = {
           essential = true
@@ -166,11 +150,24 @@ module "ecs_1" {
             }
           ]
 
-          # Completely disable CloudWatch logging
           enable_cloudwatch_logging   = false
           create_cloudwatch_log_group = false
         }
       }
+
+      # service attributes
+      desired_count = 1
+
+      capacity_provider_strategy = {
+        asg_1_cp = {
+          capacity_provider = "asg_1_cp"
+          weight            = 1
+          base              = 1
+        }
+      }
+
+      subnet_ids = module.vpc.public_subnets
+
     }
   }
 }
