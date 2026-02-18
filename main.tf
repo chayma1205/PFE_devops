@@ -50,6 +50,54 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+# alb
+module "alb" {
+  source  = "terraform-aws-modules/alb/aws"
+  version = "10.5.0"
+
+  name    = "web-alb"
+  vpc_id  = module.vpc.id
+  subnets = module.vpc.public_subnets
+
+  # Security Group
+  security_group_ingress_rules = {
+    all_http = {
+      from_port   = 80
+      to_port     = 80
+      ip_protocol = "tcp"
+      description = "HTTP web traffic"
+      cidr_ipv4   = "0.0.0.0/0"
+    }
+  }
+
+  security_group_egress_rules = {
+    all_traffic = {
+      ip_protocol = "-1"
+      cidr_ipv4   = var.vpc_cidr # allow outbound traffic only inside the vpc
+    }
+  }
+
+  listeners = {
+    https = {
+      port     = 80
+      protocol = "HTTP"
+
+      forward = {
+        target_group_key = "ecs-instances"
+      }
+    }
+  }
+
+  target_groups = {
+    ecs-instances = {
+      name_prefix      = "web_ecs_tasks"
+      protocol         = "HTTP"
+      port             = 80
+      target_type      = "ip"
+    }
+  }
+}
+
 # Auto Scaling Group
 module "web_asg" {
   source = "terraform-aws-modules/autoscaling/aws"
@@ -70,9 +118,9 @@ module "web_asg" {
   enable_monitoring           = false
 
   user_data = base64encode(<<-EOF
-#!/bin/bash
-echo "ECS_CLUSTER=${var.cluster_name}" >> /etc/ecs/ecs.config
-EOF
+    #!/bin/bash
+    echo "ECS_CLUSTER=${var.cluster_name}" >> /etc/ecs/ecs.config
+    EOF
   )
 
   create_iam_instance_profile = true
