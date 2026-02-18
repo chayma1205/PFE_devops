@@ -12,8 +12,9 @@ module "vpc" {
   enable_dns_hostnames = var.enable_dns_hostnames
   enable_dns_support   = var.enable_dns_support
 
-  public_subnet_suffix  = "pub"
-  private_subnet_suffix = "prv"
+  map_public_ip_on_launch = true
+  public_subnet_suffix    = "pub"
+  private_subnet_suffix   = "prv"
 
   igw_tags = {
     Name = "${var.vpc_name}-igw"
@@ -24,42 +25,11 @@ module "vpc" {
   }
 }
 
-# create a single IAM role for all ECS instances
-resource "aws_iam_role" "ecs_instance_role" {
-  name        = "${var.vpc_name}-ecs-instance-role"
-  path        = "/ecs/"
-  description = "ECS instance role allowing EC2 instances to register with ECS cluster, pull ECR images, and write CloudWatch logs"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        }
-      }
-    ]
-  })
-
-  depends_on = [module.vpc]
-}
-
-resource "aws_iam_role_policy_attachment" "ecs_instance_role_policy" {
-  role       = aws_iam_role.ecs_instance_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
-}
-
-resource "aws_iam_instance_profile" "ecs_instance_profile" {
-  name = "${var.vpc_name}-ecs-instance-profile"
-  role = aws_iam_role.ecs_instance_role.name
-}
-
+# #  IAM role for ECS task execution
 resource "aws_iam_role" "ecs_task_execution_role" {
   name        = "${var.vpc_name}-ecs-task-exec-role"
   path        = "/ecs/"
-  description = "ECS task execution role allowing ECS to pull images and write logs"
+  description = "ECS task execution role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -80,21 +50,24 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-module "asg_1" {
+# Auto Scaling Group
+module "web_asg" {
   source = "terraform-aws-modules/autoscaling/aws"
 
-  name               = var.asg_name
-  use_name_prefix    = false
-  min_size           = var.asg_min_size
-  max_size           = var.asg_max_size
-  desired_capacity   = var.asg_desired_capacity
-  availability_zones = var.vpc_azs
+  name             = var.asg_name
+  use_name_prefix  = false
+  min_size         = var.asg_min_size
+  max_size         = var.asg_max_size
+  desired_capacity = var.asg_desired_capacity
 
+  vpc_zone_identifier = module.vpc.public_subnets
+
+  # launch template config
   launch_template_name        = var.asg_launch_template_name
   launch_template_description = var.asg_launch_template_description
   image_id                    = var.asg_image_id
   instance_type               = var.asg_instance_type
-  enable_monitoring           = true
+  enable_monitoring           = false
 
   user_data = base64encode(<<-EOF
 #!/bin/bash
@@ -102,51 +75,81 @@ echo "ECS_CLUSTER=${var.cluster_name}" >> /etc/ecs/ecs.config
 EOF
   )
 
-  create_iam_instance_profile = false
+  create_iam_instance_profile = true
+  iam_role_name               = "${var.vpc_name}-ecsExecutionRole"
   iam_instance_profile_arn    = aws_iam_instance_profile.ecs_instance_profile.arn
+  iam_role_description        = "this role is needed for ecs"
+  iam_role_policies = {
+    ecs = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+  }
 
   tags = {
-    Name = "${var.vpc_name}-${var.asg_name}"
+    Name    = "${var.vpc_name}-${var.asg_name}"
+    Purpose = "Deploy and scale simple web app (front and back)"
   }
+
+  depends_on = [module.vpc]
 }
 
-
+# ECS Cluster and Service
 module "ecs_1" {
   source = "terraform-aws-modules/ecs/aws"
 
   cluster_name = var.cluster_name
 
   capacity_providers = {
-    asg_1_cp = {
+    web_asg = {
       auto_scaling_group_provider = {
-        auto_scaling_group_arn = module.asg_1.autoscaling_group_arn
+        auto_scaling_group_arn         = module.web_asg.autoscaling_group_arn
+        managed_termination_protection = "DISABLED"
+
+        managed_scaling = {
+          maximum_scaling_step_size = 2
+          minimum_scaling_step_size = 1
+          status                    = "ENABLED"
+          target_capacity           = 100
+        }
       }
     }
   }
 
   create_cloudwatch_log_group = false
-  cluster_capacity_providers  = ["FARGATE", "FARGATE_SPOT", "asg_1_cp"]
+  cluster_capacity_providers  = ["web_asg"]
+
+  default_capacity_provider_strategy = {
+    web_asg = {
+      weight = 1
+      base   = 0
+    }
+  }
 
   services = {
+    # frontend task definition
     frontend-task-definition = {
 
-      # task definition attributes
-      cpu    = 1024
-      memory = 1024
+      # Task definition attributes
+      cpu    = 512
+      memory = 512
 
       task_exec_iam_role_arn      = aws_iam_role.ecs_task_execution_role.arn
       create_task_exec_iam_role   = false
       create_cloudwatch_log_group = false
 
+      requires_compatibilities = ["EC2"]
+      network_mode             = "awsvpc"
+
       container_definitions = {
         frontend = {
           essential = true
-          image     = "maissendev/todo-frontend"
+          # image     = "maissendev/todo-frontend"
+          image = "nginx"
 
           port_mappings = [
             {
-              containerPort = 5500
-              protocol      = "tcp"
+              name          = "http"
+              containerPort = 80
+              # hostPort      = 0 # dynamic port mapping
+              protocol = "tcp"
             }
           ]
 
@@ -155,19 +158,22 @@ module "ecs_1" {
         }
       }
 
-      # service attributes
+      # Service attributes
       desired_count = 1
+      subnet_ids    = module.vpc.public_subnets
 
-      capacity_provider_strategy = {
-        asg_1_cp = {
-          capacity_provider = "asg_1_cp"
-          weight            = 1
-          base              = 1
+      security_group_rules = {
+        ingress_http = {
+          type        = "ingress"
+          from_port   = 80
+          to_port     = 80
+          protocol    = "tcp"
+          cidr_blocks = ["0.0.0.0/0"]
+          description = "HTTP access"
         }
       }
-
-      subnet_ids = module.vpc.public_subnets
-
     }
   }
+
+  depends_on = [module.web_asg]
 }
