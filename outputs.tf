@@ -23,27 +23,27 @@ output "private_subnet_ids" {
 
 output "asg_name" {
   description = "Autoscaling group name"
-  value       = module.asg_1.autoscaling_group_name
+  value       = module.web_asg.autoscaling_group_name
 }
 
 output "asg_arn" {
   description = "Autoscaling group ARN"
-  value       = module.asg_1.autoscaling_group_arn
+  value       = module.web_asg.autoscaling_group_arn
 }
 
 output "asg_id" {
   description = "Autoscaling group ID"
-  value       = module.asg_1.autoscaling_group_id
+  value       = module.web_asg.autoscaling_group_id
 }
 
 output "launch_template_id" {
   description = "Launch template ID used by the autoscaling group"
-  value       = module.asg_1.launch_template_id
+  value       = module.web_asg.launch_template_id
 }
 
 output "launch_template_latest_version" {
   description = "Latest launch template version"
-  value       = module.asg_1.launch_template_latest_version
+  value       = module.web_asg.launch_template_latest_version
 }
 
 #########
