@@ -11,6 +11,14 @@ Terraform code to provision AWS infrastructure for the PFE project.
 - **`variables.tf`** - Variable declarations for AWS resources
 - **`outputs.tf`** - Output values for provisioned resources
 
+## Deployment Instructions
+
+1. Configure variables in `dev.auto.tfvars` or provide via command line
+2. Initialize Terraform: `terraform init`
+3. Review plan: `terraform plan`
+4. Apply configuration: `terraform apply`
+5. Access resources using the output values
+
 ## Documentation
 
 - [REQUIREMENTS.md](./REQUIREMENTS.md) - Detailed provider versions, module information, resources, inputs, and outputs
