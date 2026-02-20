@@ -27,7 +27,7 @@ module "vpc" {
 
 # IAM role for ECS task execution
 resource "aws_iam_role" "ecs_task_execution_role" {
-  name        = "${var.vpc_name}-ecs-task-exec-role"
+  name        = "${var.vpc_name}-ecs-task-execution-role"
   path        = "/ecs/"
   description = "ECS task execution role"
 
@@ -51,17 +51,17 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
 }
 
 # ALB
-module "alb" {
+module "front_alb" {
   source  = "terraform-aws-modules/alb/aws"
   version = "10.5.0"
 
-  name    = "web-alb"
+  name    = "front-alb"
   vpc_id  = module.vpc.vpc_id
   subnets = module.vpc.public_subnets
 
   # Security Group
   security_group_ingress_rules = {
-    all_http = {
+    http = {
       from_port   = 80
       to_port     = 80
       ip_protocol = "tcp"
@@ -90,18 +90,65 @@ module "alb" {
 
   target_groups = {
     ecs-frontend-tasks-tg = {
-      name_prefix = "web-"
+      name = "frontend-tg"
       protocol    = "HTTP"
       port        = 80
       target_type = "ip"
-
-      # Important: This tells the module not to create attachments
-      # ECS will handle target registration for IP-based targets
-      create_attachment = false
+      create_attachment = false # avoid attatching ips when creating the alb
     }
   }
 
   depends_on = [module.vpc]
+}
+
+module "back_alb" {
+  source  = "terraform-aws-modules/alb/aws"
+  version = "10.5.0"
+
+  name    = "back-alb"
+  vpc_id  = module.vpc.vpc_id
+  subnets = module.vpc.public_subnets
+
+  # Security Group
+  security_group_ingress_rules = {
+    http = {
+      from_port   = 80
+      to_port     = 80
+      ip_protocol = "tcp"
+      description = "HTTP web traffic"
+      cidr_ipv4   = "0.0.0.0/0"
+    }
+  }
+
+  security_group_egress_rules = {
+    all_traffic = {
+      ip_protocol = "-1"
+      cidr_ipv4   = var.vpc_cidr # allow outbound traffic only inside the vpc
+    }
+  }
+
+  listeners = {
+    https = {
+      port     = 80
+      protocol = "HTTP"
+
+      forward = {
+        target_group_key = "ecs-backend-tasks-tg"
+      }
+    }
+  }
+
+  target_groups = {
+    ecs-backend-tasks-tg = {
+      name = "backend-tg"
+      protocol    = "HTTP"
+      port        = 8000
+      target_type = "ip"
+      create_attachment = false # avoid attatching ips when creating the alb
+    }
+  }
+
+  depends_on = [module.vpc, module.front_alb]
 }
 
 resource "aws_security_group" "ecs_instance_sg" {
@@ -251,7 +298,7 @@ module "ecs_1" {
   #     # alb config
   #     load_balancer = {
   #       service = {
-  #         target_group_arn = module.alb.target_groups["ecs-frontend-tasks-tg"].arn
+  #         target_group_arn = module.front_alb.target_groups["ecs-frontend-tasks-tg"].arn
   #         container_name   = "frontend"
   #         container_port   = 80
   #       }
@@ -270,5 +317,5 @@ module "ecs_1" {
   #   }
   # }
 
-  depends_on = [module.web_asg, module.vpc, module.alb]
+  depends_on = [module.web_asg, module.vpc, module.front_alb]
 }
