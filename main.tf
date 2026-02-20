@@ -104,6 +104,30 @@ module "alb" {
   depends_on = [module.vpc]
 }
 
+resource "aws_security_group" "ecs_instance_sg" {
+  name_prefix = "${var.vpc_name}-ecs-instance-"
+  description = "Security group for ECS EC2 instances"
+  vpc_id      = module.vpc.vpc_id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port       = 0
+    to_port         = 0
+    protocol        = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.vpc_name}-ecs-instance-sg"
+  }
+}
+
 # Auto Scaling Group
 module "web_asg" {
   source = "terraform-aws-modules/autoscaling/aws"
@@ -122,6 +146,7 @@ module "web_asg" {
   image_id                    = var.asg_image_id
   instance_type               = var.asg_instance_type
   enable_monitoring           = false
+  security_groups = [aws_security_group.ecs_instance_sg.id]
 
   user_data = base64encode(<<-EOF
     #!/bin/bash
