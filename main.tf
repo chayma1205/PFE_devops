@@ -16,12 +16,24 @@ module "vpc" {
   public_subnet_suffix    = "pub"
   private_subnet_suffix   = "prv"
 
+  # create only a single nat gateway
+  enable_nat_gateway     = true
+  single_nat_gateway     = true
+  one_nat_gateway_per_az = false
+
+  # route tables
+  manage_default_route_table = false # desable default rt creation
+
   igw_tags = {
     Name = "${var.vpc_name}-igw"
   }
 
   public_route_table_tags = {
     Name = "${var.vpc_name}-public-rt"
+  }
+
+  private_route_table_tags = {
+    Name = "${var.vpc_name}-private-rt"
   }
 }
 
@@ -90,10 +102,10 @@ module "front_alb" {
 
   target_groups = {
     ecs-frontend-tasks-tg = {
-      name = "frontend-tg"
-      protocol    = "HTTP"
-      port        = 80
-      target_type = "ip"
+      name              = "frontend-tg"
+      protocol          = "HTTP"
+      port              = 80
+      target_type       = "ip"
       create_attachment = false # avoid attatching ips when creating the alb
     }
   }
@@ -140,10 +152,10 @@ module "back_alb" {
 
   target_groups = {
     ecs-backend-tasks-tg = {
-      name = "backend-tg"
-      protocol    = "HTTP"
-      port        = 8000
-      target_type = "ip"
+      name              = "backend-tg"
+      protocol          = "HTTP"
+      port              = 8000
+      target_type       = "ip"
       create_attachment = false # avoid attatching ips when creating the alb
     }
   }
@@ -164,9 +176,9 @@ resource "aws_security_group" "ecs_instance_sg" {
   }
 
   ingress {
-    from_port       = 0
-    to_port         = 0
-    protocol        = "-1"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -193,7 +205,7 @@ module "web_asg" {
   image_id                    = var.asg_image_id
   instance_type               = var.asg_instance_type
   enable_monitoring           = false
-  security_groups = [aws_security_group.ecs_instance_sg.id]
+  security_groups             = [aws_security_group.ecs_instance_sg.id]
 
   user_data = base64encode(<<-EOF
     #!/bin/bash
