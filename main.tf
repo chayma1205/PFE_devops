@@ -25,7 +25,7 @@ module "vpc" {
   }
 }
 
-# #  IAM role for ECS task execution
+# IAM role for ECS task execution
 resource "aws_iam_role" "ecs_task_execution_role" {
   name        = "${var.vpc_name}-ecs-task-exec-role"
   path        = "/ecs/"
@@ -50,13 +50,13 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# alb
+# ALB
 module "alb" {
   source  = "terraform-aws-modules/alb/aws"
   version = "10.5.0"
 
   name    = "web-alb"
-  vpc_id  = module.vpc.id
+  vpc_id  = module.vpc.vpc_id
   subnets = module.vpc.public_subnets
 
   # Security Group
@@ -90,10 +90,14 @@ module "alb" {
 
   target_groups = {
     ecs-frontend-tasks-tg = {
-      name_prefix = "web_ecs_tasks"
+      name_prefix = "web-"
       protocol    = "HTTP"
       port        = 80
       target_type = "ip"
+
+      # Important: This tells the module not to create attachments
+      # ECS will handle target registration for IP-based targets
+      create_attachment = false
     }
   }
 
@@ -127,7 +131,6 @@ module "web_asg" {
 
   create_iam_instance_profile = true
   iam_role_name               = "${var.vpc_name}-ecsExecutionRole"
-  iam_instance_profile_arn    = aws_iam_instance_profile.ecs_instance_profile.arn
   iam_role_description        = "this role is needed for ecs"
   iam_role_policies = {
     ecs = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
@@ -135,7 +138,7 @@ module "web_asg" {
 
   tags = {
     Name    = "${var.vpc_name}-${var.asg_name}"
-    Purpose = "Deploy and scale simple web app (front and back)"
+    Purpose = "Deploy and scale simple web app - front and back"
   }
 
   depends_on = [module.vpc]
@@ -173,66 +176,74 @@ module "ecs_1" {
     }
   }
 
-  services = {
-    # frontend task definition
-    frontend-task-definition = {
+  # services = {
+  #   # frontend task definition
+  #   frontend-task-definition = {
 
-      # Task definition attributes
-      cpu    = 512
-      memory = 512
+  #     # Task definition attributes
+  #     cpu    = 512
+  #     memory = 512
 
-      task_exec_iam_role_arn      = aws_iam_role.ecs_task_execution_role.arn
-      create_task_exec_iam_role   = false
-      create_cloudwatch_log_group = false
+  #     task_exec_iam_role_arn      = aws_iam_role.ecs_task_execution_role.arn
+  #     create_task_exec_iam_role   = false
+  #     create_cloudwatch_log_group = false
 
-      requires_compatibilities = ["EC2"]
-      network_mode             = "awsvpc"
+  #     requires_compatibilities = ["EC2"]
+  #     network_mode             = "awsvpc"
 
-      container_definitions = {
-        frontend = {
-          essential = true
-          # image     = "maissendev/todo-frontend"
-          image = "nginx"
+  #     container_definitions = {
+  #       frontend = {
+  #         essential = true
+  #         image     = "maissendev/todo-frontend"
 
-          port_mappings = [
-            {
-              name          = "http"
-              containerPort = 80
-              # hostPort      = 0 # dynamic port mapping
-              protocol = "tcp"
-            }
-          ]
+  #         port_mappings = {
+  #           http = {
+  #             name          = "http"
+  #             containerPort = 80
+  #             hostPort      = 0 # dynamic port
+  #             protocol      = "tcp"
+  #           }
+  #         }
 
-          enable_cloudwatch_logging   = false
-          create_cloudwatch_log_group = false
-        }
-      }
+  #         enable_cloudwatch_logging   = false
+  #         create_cloudwatch_log_group = false
+  #       }
+  #     }
 
-      # Service attributes
-      desired_count = 1
-      subnet_ids    = module.vpc.public_subnets
+  #     # Service attributes
+  #     desired_count = 1
+  #     subnet_ids    = module.vpc.public_subnets
 
-      # alb config
-      load_balancer = {
-        service = {
-          target_group_arn = module.alb.target_groups["ecs-frontend-tasks-tg"].arn
-          container_name   = "frontend"
-          container_port   = 80
-        }
-      }
+  #     # Use the capacity provider instead of launch_type
+  #     capacity_provider_strategy = {
+  #       web_asg = {
+  #         capacity_provider = "web_asg"
+  #         weight            = 1
+  #         base              = 1
+  #       }
+  #     }
 
-      security_group_rules = {
-        ingress_http = {
-          type        = "ingress"
-          from_port   = 80
-          to_port     = 80
-          protocol    = "tcp"
-          cidr_blocks = ["0.0.0.0/0"]
-          description = "HTTP access"
-        }
-      }
-    }
-  }
+  #     # alb config
+  #     load_balancer = {
+  #       service = {
+  #         target_group_arn = module.alb.target_groups["ecs-frontend-tasks-tg"].arn
+  #         container_name   = "frontend"
+  #         container_port   = 80
+  #       }
+  #     }
+
+  #     security_group_rules = {
+  #       ingress_http = {
+  #         type        = "ingress"
+  #         from_port   = 80
+  #         to_port     = 80
+  #         protocol    = "tcp"
+  #         cidr_blocks = ["0.0.0.0/0"]
+  #         description = "HTTP access"
+  #       }
+  #     }
+  #   }
+  # }
 
   depends_on = [module.web_asg, module.vpc, module.alb]
 }
