@@ -1,3 +1,7 @@
+#########
+# VPC
+#########
+
 variable "aws_region" {
   type        = string
   description = "The region for the provisioned aws infra"
@@ -43,4 +47,117 @@ variable "public_subnets_cidrs" {
   type        = list(string)
   description = "the list of cidr blocks for the public subnets"
   default     = []
+}
+
+#########
+# BASTION INSTANCE  
+#########
+variable "bastion_ami" {
+  type        = string
+  description = "The id of ami to use for the bastion isntance"
+}
+
+variable "bastion_name" {
+  type        = string
+  description = ""
+  default     = "bastion_instance"
+}
+
+variable "bastion_type" {
+  type        = string
+  description = "Bastion instance type"
+}
+
+variable "enable_bastion_monitoring" {
+  type        = bool
+  description = "Enable/desable bastion instance monitoring"
+  default     = true
+}
+
+variable "bastion_ingress_rule_cidr" {
+  type        = string
+  description = "The cidr block of baction security group ingress rule"
+  default     = "0.0.0.0/0"
+}
+
+variable "bastion_key_name" {
+  type        = string
+  description = "The name of ssh key to access your bastion instance"
+}
+
+variable "bastion_user_data" {
+  type        = string
+  description = "the .sh file for the user data"
+  default     = null
+}
+
+variable "bastion_storage_size" {
+  type        = number
+  description = "The storage to allocate in Gb for the bastion instance"
+  default     = 30
+}
+#########
+# ALB
+#########
+variable "ecs_frontend_tasks_port" {
+  type        = number
+  description = "The port of ecs frontend tasks"
+}
+
+variable "ecs_backend_tasks_port" {
+  type        = number
+  description = "The port of ecs backend tasks"
+}
+
+#########
+# ASG
+#########
+
+variable "asg_name" {
+  type        = string
+  description = "ASG name"
+}
+
+variable "asg_min_size" {
+  type        = number
+  description = "Minimum instances"
+}
+
+variable "asg_max_size" {
+  type        = number
+  description = "Maximum instances"
+}
+
+variable "asg_desired_capacity" {
+  type        = number
+  description = "Desired instances"
+}
+
+variable "asg_launch_template_name" {
+  type        = string
+  description = "name of the launch template"
+}
+
+variable "asg_launch_template_description" {
+  type        = string
+  description = "description for the launch template"
+}
+
+variable "asg_image_id" {
+  type        = string
+  description = "ami id to use for the instances"
+}
+
+variable "asg_instance_type" {
+  type        = string
+  description = "ec2 instance type"
+}
+
+#########
+# ECS
+#########
+
+variable "cluster_name" {
+  type        = string
+  description = "ecs cluster name"
 }
