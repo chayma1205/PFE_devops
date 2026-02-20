@@ -69,7 +69,7 @@ module "front_alb" {
 
   name    = "front-alb"
   vpc_id  = module.vpc.vpc_id
-  subnets = module.vpc.public_subnets
+  subnets = module.vpc.private_subnets
 
   # Security Group
   security_group_ingress_rules = {
@@ -104,7 +104,7 @@ module "front_alb" {
     ecs-frontend-tasks-tg = {
       name              = "frontend-tg"
       protocol          = "HTTP"
-      port              = 80
+      port              = var.ecs_frontend_tasks_port
       target_type       = "ip"
       create_attachment = false # avoid attatching ips when creating the alb
     }
@@ -119,7 +119,7 @@ module "back_alb" {
 
   name    = "back-alb"
   vpc_id  = module.vpc.vpc_id
-  subnets = module.vpc.public_subnets
+  subnets = module.vpc.private_subnets
 
   # Security Group
   security_group_ingress_rules = {
@@ -128,7 +128,7 @@ module "back_alb" {
       to_port     = 80
       ip_protocol = "tcp"
       description = "HTTP web traffic"
-      cidr_ipv4   = "0.0.0.0/0"
+      cidr_ipv4   = var.vpc_cidr
     }
   }
 
@@ -154,7 +154,7 @@ module "back_alb" {
     ecs-backend-tasks-tg = {
       name              = "backend-tg"
       protocol          = "HTTP"
-      port              = 8000
+      port              = var.ecs_backend_tasks_port
       target_type       = "ip"
       create_attachment = false # avoid attatching ips when creating the alb
     }
@@ -197,7 +197,7 @@ module "web_asg" {
   max_size         = var.asg_max_size
   desired_capacity = var.asg_desired_capacity
 
-  vpc_zone_identifier = module.vpc.public_subnets
+  vpc_zone_identifier = module.vpc.private_subnets
 
   # launch template config
   launch_template_name        = var.asg_launch_template_name
@@ -235,7 +235,7 @@ module "ecs_1" {
   cluster_name = var.cluster_name
 
   capacity_providers = {
-    web_asg = {
+    web_asg_cp = {
       auto_scaling_group_provider = {
         auto_scaling_group_arn         = module.web_asg.autoscaling_group_arn
         managed_termination_protection = "DISABLED"
@@ -251,10 +251,10 @@ module "ecs_1" {
   }
 
   create_cloudwatch_log_group = false
-  cluster_capacity_providers  = ["web_asg"]
+  cluster_capacity_providers  = ["web_asg_cp"]
 
   default_capacity_provider_strategy = {
-    web_asg = {
+    web_asg_cp = {
       weight = 1
       base   = 0
     }
@@ -300,8 +300,8 @@ module "ecs_1" {
 
   #     # Use the capacity provider instead of launch_type
   #     capacity_provider_strategy = {
-  #       web_asg = {
-  #         capacity_provider = "web_asg"
+  #       web_asg_cp = {
+  #         capacity_provider = "web_asg_cp"
   #         weight            = 1
   #         base              = 1
   #       }

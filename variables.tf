@@ -50,6 +50,19 @@ variable "public_subnets_cidrs" {
 }
 
 #########
+# ALB
+#########
+variable "ecs_frontend_tasks_port" {
+  type        = number
+  description = "The port of ecs frontend tasks"
+}
+
+variable "ecs_backend_tasks_port" {
+  type        = number
+  description = "The port of ecs backend tasks"
+}
+
+#########
 # ASG
 #########
 
