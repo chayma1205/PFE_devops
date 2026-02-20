@@ -13,16 +13,23 @@ module "vpc" {
   enable_dns_support   = var.enable_dns_support
 
   map_public_ip_on_launch = true
-  public_subnet_suffix    = "pub"
-  private_subnet_suffix   = "prv"
+
+  public_subnet_names = [
+    for i, k in var.public_subnets_cidrs : "pub-subnet-${i + 1}"
+  ]
+
+  private_subnet_names = [
+    for i, k in var.private_subnets_cidrs : "prv-subnet-${i + 1}"
+  ]
 
   # create only a single nat gateway
   enable_nat_gateway     = true
   single_nat_gateway     = true
   one_nat_gateway_per_az = false
 
-  # route tables
-  manage_default_route_table = false # desable default rt creation
+  nat_gateway_tags = {
+    Name = "${var.vpc_name}-nat-gw"
+  }
 
   igw_tags = {
     Name = "${var.vpc_name}-igw"
