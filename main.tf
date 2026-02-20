@@ -66,6 +66,14 @@ module "bastion_instance" {
       from_port   = 22
       to_port     = 22
     }
+
+    # the bastion instance will temporarly host the database for the ecs tasks
+    allow_database_port = {
+      cidr_ipv4   = var.vpc_cidr
+      ip_protocol = "tcp"
+      from_port   = 5500
+      to_port     = 5500
+    }
   }
 
   security_group_egress_rules = {
@@ -279,7 +287,7 @@ module "web_asg" {
 }
 
 # ECS Cluster and Service
-module "ecs_1" {
+module "ecs" {
   source = "terraform-aws-modules/ecs/aws"
 
   cluster_name = var.cluster_name

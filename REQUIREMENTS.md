@@ -20,7 +20,7 @@
 | <a name="module_front_alb"></a> [front_alb](#module_front_alb) | terraform-aws-modules/alb/aws | 10.5.0 |
 | <a name="module_back_alb"></a> [back_alb](#module_back_alb) | terraform-aws-modules/alb/aws | 10.5.0 |
 | <a name="module_web_asg"></a> [web_asg](#module_web_asg) | terraform-aws-modules/autoscaling/aws | n/a |
-| <a name="module_ecs_1"></a> [ecs_1](#module_ecs_1) | terraform-aws-modules/ecs/aws | n/a |
+| <a name="module_ecs"></a> [ecs](#module_ecs) | terraform-aws-modules/ecs/aws | n/a |
 
 
 ## Inputs

@@ -96,6 +96,12 @@ variable "bastion_storage_size" {
   description = "The storage to allocate in Gb for the bastion instance"
   default     = 30
 }
+
+variable "bastion_allowed_db_port" {
+  type        = number
+  description = "The port of database service hosted in the bastion instance"
+}
+
 #########
 # ALB
 #########
