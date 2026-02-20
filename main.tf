@@ -53,7 +53,7 @@ module "bastion_instance" {
   subnet_id     = module.vpc.public_subnets[0]
 
   key_name  = aws_key_pair.bastion_key.key_name
-  user_data = var.bastion_user_data != null ? var.bastion_user_data : ""
+  user_data = var.bastion_user_data != null ? file("${path.module}/${var.bastion_user_data}") : ""
 
   # security group config
   create_security_group = true

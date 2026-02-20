@@ -18,6 +18,14 @@ output "private_subnet_ids" {
 }
 
 #########
+# BASTION INSTANCE
+#########
+output "bastion_public_ip" {
+  description = "The public ip of bastion instance"
+  value       = module.bastion_instance.public_ip
+}
+
+#########
 # ASG
 #########
 
