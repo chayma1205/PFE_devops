@@ -3,6 +3,7 @@
 
 # ignore ssh pub key
 *.pub
+*.pem
 
 # ignore shell scripts
 *.sh

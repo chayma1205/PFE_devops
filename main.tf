@@ -37,6 +37,56 @@ module "vpc" {
   }
 }
 
+resource "aws_key_pair" "bastion_key" {
+  key_name   = "bastion_key_pair"
+  public_key = file("${path.module}/${var.bastion_key_name}")
+}
+
+module "bastion_instance" {
+  source  = "terraform-aws-modules/ec2-instance/aws"
+  version = "6.2.0"
+
+  ami           = var.bastion_ami
+  name          = var.bastion_name
+  instance_type = var.bastion_type
+  monitoring    = var.enable_bastion_monitoring
+  subnet_id     = module.vpc.public_subnets[0]
+
+  key_name  = aws_key_pair.bastion_key.key_name
+  user_data = var.bastion_user_data != null ? var.bastion_user_data : ""
+
+  # security group config
+  create_security_group = true
+  security_group_name   = "bastion_sg"
+
+  security_group_ingress_rules = {
+    allow_ssh = {
+      cidr_ipv4   = var.bastion_ingress_rule_cidr
+      ip_protocol = "tcp"
+      from_port   = 22
+      to_port     = 22
+    }
+  }
+
+  security_group_egress_rules = {
+    allow_all = {
+      cidr_ipv4   = "0.0.0.0/0"
+      ip_protocol = "-1"
+    }
+  }
+
+  # instance storage
+  root_block_device = {
+    volume_size = var.bastion_storage_size
+    volume_type = "gp3"
+  }
+
+  tags = {
+    Name        = "${var.vpc_name}-bastion"
+    Description = "Allow ssh to vpc's private instances"
+  }
+}
+
 # IAM role for ECS task execution
 resource "aws_iam_role" "ecs_task_execution_role" {
   name        = "${var.vpc_name}-ecs-task-execution-role"
