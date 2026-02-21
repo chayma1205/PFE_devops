@@ -132,11 +132,15 @@ module "front_alb" {
   source  = "terraform-aws-modules/alb/aws"
   version = "10.5.0"
 
-  name    = "front-alb"
-  vpc_id  = module.vpc.vpc_id
-  subnets = module.vpc.private_subnets
+  name               = "front-alb"
+  vpc_id             = module.vpc.vpc_id
+  subnets            = module.vpc.public_subnets
+  load_balancer_type = "application"
+  internal           = false
 
   # Security Group
+  security_group_name = "frontend-alb-sg"
+  security_group_use_name_prefix = false
   security_group_ingress_rules = {
     http = {
       from_port   = 80
@@ -182,11 +186,15 @@ module "back_alb" {
   source  = "terraform-aws-modules/alb/aws"
   version = "10.5.0"
 
-  name    = "back-alb"
-  vpc_id  = module.vpc.vpc_id
-  subnets = module.vpc.private_subnets
+  name               = "back-alb"
+  vpc_id             = module.vpc.vpc_id
+  subnets            = module.vpc.private_subnets
+  load_balancer_type = "application"
+  internal           = true
 
   # Security Group
+  security_group_name = "backend-alb-sg"
+  security_group_use_name_prefix = false
   security_group_ingress_rules = {
     http = {
       from_port   = 80
