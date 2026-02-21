@@ -64,7 +64,7 @@ module "bastion_instance" {
 
   # security group config
   create_security_group = true
-  security_group_name   = "bastion_sg"
+  security_group_name   = "${var.vpc_name}-bastion_sg"
 
   security_group_ingress_rules = {
     allow_ssh = {
@@ -139,7 +139,7 @@ module "front_alb" {
   internal           = false
 
   # Security Group
-  security_group_name = "frontend-alb-sg"
+  security_group_name            = "frontend-alb-sg"
   security_group_use_name_prefix = false
   security_group_ingress_rules = {
     http = {
@@ -154,7 +154,8 @@ module "front_alb" {
   security_group_egress_rules = {
     all_traffic = {
       ip_protocol = "-1"
-      cidr_ipv4   = var.vpc_cidr # allow outbound traffic only inside the vpc
+      cidr_ipv4   = var.vpc_cidr
+      description = "allow outbound traffic only inside the vpc"
     }
   }
 
@@ -193,7 +194,7 @@ module "back_alb" {
   internal           = true
 
   # Security Group
-  security_group_name = "backend-alb-sg"
+  security_group_name            = "backend-alb-sg"
   security_group_use_name_prefix = false
   security_group_ingress_rules = {
     http = {
@@ -208,7 +209,8 @@ module "back_alb" {
   security_group_egress_rules = {
     all_traffic = {
       ip_protocol = "-1"
-      cidr_ipv4   = var.vpc_cidr # allow outbound traffic only inside the vpc
+      cidr_ipv4   = var.vpc_cidr
+      description = "allow outbound traffic only inside the vpc"
     }
   }
 
@@ -237,7 +239,6 @@ module "back_alb" {
 }
 
 resource "aws_security_group" "ecs_instance_sg" {
-  name_prefix = "${var.vpc_name}-ecs-instance-"
   description = "Security group for ECS EC2 instances"
   vpc_id      = module.vpc.vpc_id
 
@@ -246,13 +247,31 @@ resource "aws_security_group" "ecs_instance_sg" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
+    description = "allow any outbound traffic"
   }
 
   ingress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port       = var.ecs_frontend_tasks_port
+    to_port         = var.ecs_frontend_tasks_port
+    protocol        = "tcp"
+    security_groups = [module.front_alb.security_group_id]
+    description = "allow inbound traffic to frontend ecs tasks"
+  }
+
+  ingress {
+    from_port       = var.ecs_backend_tasks_port
+    to_port         = var.ecs_backend_tasks_port
+    protocol        = "tcp"
+    security_groups = [module.back_alb.security_group_id]
+    description = "allow inbound traffic to backend ecs tasks"
+  }
+
+  ingress {
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    security_groups = [module.bastion_instance.security_group_id]
+    description     = "SSH from Bastion"
   }
 
   tags = {
