@@ -55,17 +55,18 @@ output "launch_template_latest_version" {
 }
 
 #########
-# ASG
+# ALB
 #########
 output "front_alb_dns" {
-  description = "The dns of front alb"
+  description = "The dns name of the frontend alb"
   value       = module.front_alb.dns_name
 }
 
 output "back_alb_dns" {
-  description = "The dns of back alb"
+  description = "The dns name of the backend alb"
   value       = module.back_alb.dns_name
 }
+
 
 #########
 # ECS

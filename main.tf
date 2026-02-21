@@ -189,9 +189,9 @@ module "back_alb" {
 
   name               = "back-alb"
   vpc_id             = module.vpc.vpc_id
-  subnets            = module.vpc.private_subnets
+  subnets            = module.vpc.public_subnets
   load_balancer_type = "application"
-  internal           = true
+  internal           = false
 
   # Security Group
   security_group_name            = "backend-alb-sg"
@@ -202,7 +202,7 @@ module "back_alb" {
       to_port     = 80
       ip_protocol = "tcp"
       description = "HTTP web traffic"
-      cidr_ipv4   = var.vpc_cidr
+      cidr_ipv4   = "0.0.0.0/0"
     }
   }
 
@@ -255,7 +255,7 @@ resource "aws_security_group" "ecs_instance_sg" {
     to_port         = var.ecs_frontend_tasks_port
     protocol        = "tcp"
     security_groups = [module.front_alb.security_group_id]
-    description = "allow inbound traffic to frontend ecs tasks"
+    description     = "allow inbound traffic to frontend ecs tasks"
   }
 
   ingress {
@@ -263,7 +263,7 @@ resource "aws_security_group" "ecs_instance_sg" {
     to_port         = var.ecs_backend_tasks_port
     protocol        = "tcp"
     security_groups = [module.back_alb.security_group_id]
-    description = "allow inbound traffic to backend ecs tasks"
+    description     = "allow inbound traffic to backend ecs tasks"
   }
 
   ingress {
