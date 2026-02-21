@@ -352,74 +352,83 @@ module "ecs" {
     }
   }
 
-  # services = {
-  #   # frontend task definition
-  #   frontend-task-definition = {
+  services = {
+    # frontend task definition
+    frontend-task-definition = {
 
-  #     # Task definition attributes
-  #     cpu    = 512
-  #     memory = 512
+      # Task definition attributes
+      cpu    = var.frontend_task_definition_cpu
+      memory = var.frontend_task_definition_memory
 
-  #     task_exec_iam_role_arn      = aws_iam_role.ecs_task_execution_role.arn
-  #     create_task_exec_iam_role   = false
-  #     create_cloudwatch_log_group = false
+      task_exec_iam_role_arn      = aws_iam_role.ecs_task_execution_role.arn
+      create_task_exec_iam_role   = false
+      create_cloudwatch_log_group = false
 
-  #     requires_compatibilities = ["EC2"]
-  #     network_mode             = "awsvpc"
+      requires_compatibilities = ["EC2"]
+      network_mode             = "awsvpc"
 
-  #     container_definitions = {
-  #       frontend = {
-  #         essential = true
-  #         image     = "maissendev/todo-frontend"
+      container_definitions = {
+        frontend = {
+          essential = true
+          image     = "maissendev/todo-frontend"
 
-  #         port_mappings = {
-  #           http = {
-  #             name          = "http"
-  #             containerPort = 80
-  #             hostPort      = 0 # dynamic port
-  #             protocol      = "tcp"
-  #           }
-  #         }
+          port_mappings = {
+            http = {
+              name          = "http"
+              containerPort = var.ecs_frontend_tasks_port
+              hostPort      = 0 # dynamic port
+              protocol      = "tcp"
+            }
+          }
 
-  #         enable_cloudwatch_logging   = false
-  #         create_cloudwatch_log_group = false
-  #       }
-  #     }
+          enable_cloudwatch_logging   = false
+          create_cloudwatch_log_group = false
+        }
+      }
 
-  #     # Service attributes
-  #     desired_count = 1
-  #     subnet_ids    = module.vpc.public_subnets
+      # Service attributes
+      desired_count = var.frontend_service_desired_tasks
+      subnet_ids    = module.vpc.private_subnets
 
-  #     # Use the capacity provider instead of launch_type
-  #     capacity_provider_strategy = {
-  #       web_asg_cp = {
-  #         capacity_provider = "web_asg_cp"
-  #         weight            = 1
-  #         base              = 1
-  #       }
-  #     }
+      # Use the capacity provider instead of launch_type
+      capacity_provider_strategy = {
+        web_asg_cp = {
+          capacity_provider = "web_asg_cp"
+          weight            = 1
+          base              = 1
+        }
+      }
 
-  #     # alb config
-  #     load_balancer = {
-  #       service = {
-  #         target_group_arn = module.front_alb.target_groups["ecs-frontend-tasks-tg"].arn
-  #         container_name   = "frontend"
-  #         container_port   = 80
-  #       }
-  #     }
+      # alb config
+      load_balancer = {
+        service = {
+          target_group_arn = module.front_alb.target_groups["ecs-frontend-tasks-tg"].arn
+          container_name   = "frontend"
+          container_port   = var.ecs_frontend_tasks_port
+        }
+      }
 
-  #     security_group_rules = {
-  #       ingress_http = {
-  #         type        = "ingress"
-  #         from_port   = 80
-  #         to_port     = 80
-  #         protocol    = "tcp"
-  #         cidr_blocks = ["0.0.0.0/0"]
-  #         description = "HTTP access"
-  #       }
-  #     }
-  #   }
-  # }
+      security_group_rules = {
+        ingress_http = {
+          type        = "ingress"
+          from_port   = var.ecs_frontend_tasks_port
+          to_port     = var.ecs_frontend_tasks_port
+          protocol    = "tcp"
+          cidr_blocks = [var.vpc_cidr]
+          description = "VPC-only HTTP access"
+        }
+
+        egress_http = {
+          type        = "egress"
+          from_port   = var.ecs_backend_tasks_port
+          to_port     = var.ecs_backend_tasks_port
+          protocol    = "tcp"
+          cidr_blocks = [var.vpc_cidr]
+          description = "VPC-only HTTP egress"
+        }
+      }
+    }
+  }
 
   depends_on = [module.web_asg, module.vpc, module.front_alb]
 }

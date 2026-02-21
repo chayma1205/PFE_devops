@@ -167,3 +167,18 @@ variable "cluster_name" {
   type        = string
   description = "ecs cluster name"
 }
+
+variable "frontend_task_definition_cpu" {
+  type        = number
+  description = "the vcpu to reserve for the frontend task definition"
+}
+
+variable "frontend_task_definition_memory" {
+  type        = number
+  description = "the memory to reserve for the frontend task definition"
+}
+
+variable "frontend_service_desired_tasks" {
+  type        = number
+  description = "the desired tasks number for frontend tasks"
+}
