@@ -182,3 +182,51 @@ variable "frontend_service_desired_tasks" {
   type        = number
   description = "the desired tasks number for frontend tasks"
 }
+
+variable "frontend_task_api_url" {
+  description = "Backend API URL for the frontend application"
+  type        = string
+  default     = "" # it's set automatically
+}
+
+variable "backend_task_definition_cpu" {
+  type        = number
+  description = "the vcpu to reserve for the backend task definition"
+}
+
+variable "backend_task_definition_memory" {
+  type        = number
+  description = "the memory to reserve for the backend task definition"
+}
+
+variable "backend_service_desired_tasks" {
+  type        = number
+  description = "the desired tasks number for backend tasks"
+}
+
+variable "backend_task_db_user" {
+  description = "Database username for the backend application"
+  type        = string
+}
+
+variable "backend_task_db_password" {
+  description = "Database password for the backend application"
+  type        = string
+  sensitive   = true
+}
+
+variable "backend_task_db_port" {
+  description = "Database port number"
+  type        = number
+}
+
+variable "backend_task_db_name" {
+  description = "Database name for the backend application"
+  type        = string
+}
+
+variable "backend_task_db_host" {
+  description = "Database host IP address or hostname"
+  type        = string
+  default     = null
+}
