@@ -64,7 +64,7 @@ module "bastion_instance" {
 
   # security group config
   create_security_group = true
-  security_group_name   = "bastion_sg"
+  security_group_name   = "${var.vpc_name}-bastion_sg"
 
   security_group_ingress_rules = {
     allow_ssh = {
@@ -139,7 +139,7 @@ module "front_alb" {
   internal           = false
 
   # Security Group
-  security_group_name = "frontend-alb-sg"
+  security_group_name            = "frontend-alb-sg"
   security_group_use_name_prefix = false
   security_group_ingress_rules = {
     http = {
@@ -154,7 +154,8 @@ module "front_alb" {
   security_group_egress_rules = {
     all_traffic = {
       ip_protocol = "-1"
-      cidr_ipv4   = var.vpc_cidr # allow outbound traffic only inside the vpc
+      cidr_ipv4   = var.vpc_cidr
+      description = "allow outbound traffic only inside the vpc"
     }
   }
 
@@ -188,12 +189,12 @@ module "back_alb" {
 
   name               = "back-alb"
   vpc_id             = module.vpc.vpc_id
-  subnets            = module.vpc.private_subnets
+  subnets            = module.vpc.public_subnets
   load_balancer_type = "application"
-  internal           = true
+  internal           = false
 
   # Security Group
-  security_group_name = "backend-alb-sg"
+  security_group_name            = "backend-alb-sg"
   security_group_use_name_prefix = false
   security_group_ingress_rules = {
     http = {
@@ -201,14 +202,15 @@ module "back_alb" {
       to_port     = 80
       ip_protocol = "tcp"
       description = "HTTP web traffic"
-      cidr_ipv4   = var.vpc_cidr
+      cidr_ipv4   = "0.0.0.0/0"
     }
   }
 
   security_group_egress_rules = {
     all_traffic = {
       ip_protocol = "-1"
-      cidr_ipv4   = var.vpc_cidr # allow outbound traffic only inside the vpc
+      cidr_ipv4   = var.vpc_cidr
+      description = "allow outbound traffic only inside the vpc"
     }
   }
 
@@ -237,7 +239,6 @@ module "back_alb" {
 }
 
 resource "aws_security_group" "ecs_instance_sg" {
-  name_prefix = "${var.vpc_name}-ecs-instance-"
   description = "Security group for ECS EC2 instances"
   vpc_id      = module.vpc.vpc_id
 
@@ -246,13 +247,31 @@ resource "aws_security_group" "ecs_instance_sg" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
+    description = "allow any outbound traffic"
   }
 
   ingress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port       = var.ecs_frontend_tasks_port
+    to_port         = var.ecs_frontend_tasks_port
+    protocol        = "tcp"
+    security_groups = [module.front_alb.security_group_id]
+    description     = "allow inbound traffic to frontend ecs tasks"
+  }
+
+  ingress {
+    from_port       = var.ecs_backend_tasks_port
+    to_port         = var.ecs_backend_tasks_port
+    protocol        = "tcp"
+    security_groups = [module.back_alb.security_group_id]
+    description     = "allow inbound traffic to backend ecs tasks"
+  }
+
+  ingress {
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    security_groups = [module.bastion_instance.security_group_id]
+    description     = "SSH from Bastion"
   }
 
   tags = {
@@ -333,74 +352,188 @@ module "ecs" {
     }
   }
 
-  # services = {
-  #   # frontend task definition
-  #   frontend-task-definition = {
+  services = {
+    # frontend task definition
+    frontend-task-definition = {
 
-  #     # Task definition attributes
-  #     cpu    = 512
-  #     memory = 512
+      # Task definition attributes
+      cpu    = var.frontend_task_definition_cpu
+      memory = var.frontend_task_definition_memory
 
-  #     task_exec_iam_role_arn      = aws_iam_role.ecs_task_execution_role.arn
-  #     create_task_exec_iam_role   = false
-  #     create_cloudwatch_log_group = false
+      task_exec_iam_role_arn      = aws_iam_role.ecs_task_execution_role.arn
+      create_task_exec_iam_role   = false
+      create_cloudwatch_log_group = false
 
-  #     requires_compatibilities = ["EC2"]
-  #     network_mode             = "awsvpc"
+      requires_compatibilities = ["EC2"]
+      network_mode             = "awsvpc"
 
-  #     container_definitions = {
-  #       frontend = {
-  #         essential = true
-  #         image     = "maissendev/todo-frontend"
+      container_definitions = {
+        frontend = {
+          essential = true
+          image     = "maissendev/todo-frontend"
 
-  #         port_mappings = {
-  #           http = {
-  #             name          = "http"
-  #             containerPort = 80
-  #             hostPort      = 0 # dynamic port
-  #             protocol      = "tcp"
-  #           }
-  #         }
+          environment = [
+            {
+              name  = "API_URL"
+              value = var.frontend_task_api_url != "" ? module.back_alb.dns_name : var.frontend_task_api_url
+            }
+          ]
 
-  #         enable_cloudwatch_logging   = false
-  #         create_cloudwatch_log_group = false
-  #       }
-  #     }
+          port_mappings = {
+            http = {
+              name          = "http"
+              containerPort = var.ecs_frontend_tasks_port
+              hostPort      = 0 # dynamic port
+              protocol      = "tcp"
+            }
+          }
 
-  #     # Service attributes
-  #     desired_count = 1
-  #     subnet_ids    = module.vpc.public_subnets
+          enable_cloudwatch_logging   = false
+          create_cloudwatch_log_group = false
+        }
+      }
 
-  #     # Use the capacity provider instead of launch_type
-  #     capacity_provider_strategy = {
-  #       web_asg_cp = {
-  #         capacity_provider = "web_asg_cp"
-  #         weight            = 1
-  #         base              = 1
-  #       }
-  #     }
+      # Service attributes
+      desired_count = var.frontend_service_desired_tasks
+      subnet_ids    = module.vpc.private_subnets
 
-  #     # alb config
-  #     load_balancer = {
-  #       service = {
-  #         target_group_arn = module.front_alb.target_groups["ecs-frontend-tasks-tg"].arn
-  #         container_name   = "frontend"
-  #         container_port   = 80
-  #       }
-  #     }
+      # Use the capacity provider instead of launch_type
+      capacity_provider_strategy = {
+        web_asg_cp = {
+          capacity_provider = "web_asg_cp"
+          weight            = 1
+          base              = 1
+        }
+      }
 
-  #     security_group_rules = {
-  #       ingress_http = {
-  #         type        = "ingress"
-  #         from_port   = 80
-  #         to_port     = 80
-  #         protocol    = "tcp"
-  #         cidr_blocks = ["0.0.0.0/0"]
-  #         description = "HTTP access"
-  #       }
-  #     }
-  #   }
-  # }
+      # alb config
+      load_balancer = {
+        service = {
+          target_group_arn = module.front_alb.target_groups["ecs-frontend-tasks-tg"].arn
+          container_name   = "frontend"
+          container_port   = var.ecs_frontend_tasks_port
+        }
+      }
 
-  depends_on = [module.web_asg, module.vpc, module.front_alb]
+      security_group_rules = {
+        ingress_http = {
+          type        = "ingress"
+          from_port   = var.ecs_frontend_tasks_port
+          to_port     = var.ecs_frontend_tasks_port
+          protocol    = "tcp"
+          cidr_blocks = [var.vpc_cidr]
+          description = "VPC-only HTTP access"
+        }
+
+        egress_http = {
+          type        = "egress"
+          from_port   = var.ecs_backend_tasks_port
+          to_port     = var.ecs_backend_tasks_port
+          protocol    = "tcp"
+          cidr_blocks = [var.vpc_cidr]
+          description = "VPC-only HTTP egress"
+        }
+      }
+    }
+
+    # backend task definition
+    backend-task-definition = {
+
+      # Task definition attributes
+      cpu    = var.backend_task_definition_cpu
+      memory = var.backend_task_definition_memory
+
+      task_exec_iam_role_arn      = aws_iam_role.ecs_task_execution_role.arn
+      create_task_exec_iam_role   = false
+      create_cloudwatch_log_group = false
+
+      requires_compatibilities = ["EC2"]
+      network_mode             = "awsvpc"
+
+      container_definitions = {
+        backend = {
+          essential = true
+          image     = "maissendev/todo-backend"
+
+          environment = [
+            {
+              name  = "DB_USER"
+              value = var.backend_task_db_user
+            },
+            {
+              name  = "DB_PASSWORD"
+              value = var.backend_task_db_password
+            },
+            {
+              name  = "DB_PORT"
+              value = tostring(var.backend_task_db_port)
+            },
+            {
+              name  = "DB_NAME"
+              value = var.backend_task_db_name
+            },
+            {
+              name = "DB_HOST"
+              # value = var.backend_task_db_host # desabled because the bastion ec2 is hosting the db temporarly
+              value = module.bastion_instance.private_ip
+            }
+          ]
+
+          port_mappings = {
+            http = {
+              name          = "http"
+              containerPort = var.ecs_backend_tasks_port
+              hostPort      = 0 # dynamic port
+              protocol      = "tcp"
+            }
+          }
+
+          enable_cloudwatch_logging   = false
+          create_cloudwatch_log_group = false
+        }
+      }
+
+      # Service attributes
+      desired_count = var.backend_service_desired_tasks
+      subnet_ids    = module.vpc.private_subnets
+
+      # Use the capacity provider instead of launch_type
+      capacity_provider_strategy = {
+        web_asg_cp = {
+          capacity_provider = "web_asg_cp"
+          weight            = 1
+          base              = 1
+        }
+      }
+
+      # alb config
+      load_balancer = {
+        service = {
+          target_group_arn = module.back_alb.target_groups["ecs-backend-tasks-tg"].arn
+          container_name   = "backend"
+          container_port   = var.ecs_backend_tasks_port
+        }
+      }
+
+      security_group_rules = {
+        ingress_http = {
+          type        = "ingress"
+          from_port   = var.ecs_backend_tasks_port
+          to_port     = var.ecs_backend_tasks_port
+          protocol    = "tcp"
+          cidr_blocks = [var.vpc_cidr]
+          description = "VPC-only HTTP access"
+        }
+
+        egress_http = {
+          type        = "egress"
+          protocol    = "-1"
+          cidr_blocks = ["0.0.0.0/0"]
+          description = "All tcp egress"
+        }
+      }
+    }
+  }
+
+  depends_on = [module.web_asg, module.vpc, module.front_alb, module.back_alb, module.bastion_instance]
 }

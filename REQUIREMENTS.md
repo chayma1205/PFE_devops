@@ -22,6 +22,14 @@
 | <a name="module_web_asg"></a> [web_asg](#module_web_asg) | terraform-aws-modules/autoscaling/aws | n/a |
 | <a name="module_ecs"></a> [ecs](#module_ecs) | terraform-aws-modules/ecs/aws | n/a |
 
+## Resources
+
+| Name | Type |
+|------|------|
+| [aws_iam_role.ecs_task_execution_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [aws_iam_role_policy_attachment.ecs_task_execution_role_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_key_pair.bastion_key](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/key_pair) | resource |
+| [aws_security_group.ecs_instance_sg](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group) | resource |
 
 ## Inputs
 
@@ -56,6 +64,7 @@
 | <a name="input_bastion_key_name"></a> [bastion_key_name](#input_bastion_key_name) | The name of SSH key to access your bastion instance | `string` | n/a | yes |
 | <a name="input_bastion_user_data"></a> [bastion_user_data](#input_bastion_user_data) | The .sh file for the user data | `string` | `null` | no |
 | <a name="input_bastion_storage_size"></a> [bastion_storage_size](#input_bastion_storage_size) | The storage to allocate in GB for the bastion instance | `number` | `30` | no |
+| <a name="input_bastion_allowed_db_port"></a> [bastion_allowed_db_port](#input_bastion_allowed_db_port) | The port of database service hosted in the bastion instance | `number` | n/a | yes |
 
 ##### Application Load Balancer Configuration
 | Name | Description | Type | Default | Required |
@@ -79,6 +88,18 @@
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_cluster_name"></a> [cluster_name](#input_cluster_name) | ECS cluster name | `string` | n/a | yes |
+| <a name="input_frontend_task_definition_cpu"></a> [frontend_task_definition_cpu](#input_frontend_task_definition_cpu) | The vCPU to reserve for the frontend task definition | `number` | n/a | yes |
+| <a name="input_frontend_task_definition_memory"></a> [frontend_task_definition_memory](#input_frontend_task_definition_memory) | The memory to reserve for the frontend task definition | `number` | n/a | yes |
+| <a name="input_frontend_service_desired_tasks"></a> [frontend_service_desired_tasks](#input_frontend_service_desired_tasks) | The desired tasks number for frontend tasks | `number` | n/a | yes |
+| <a name="input_frontend_task_api_url"></a> [frontend_task_api_url](#input_frontend_task_api_url) | Backend API URL for the frontend application | `string` | `""` | no |
+| <a name="input_backend_task_definition_cpu"></a> [backend_task_definition_cpu](#input_backend_task_definition_cpu) | The vCPU to reserve for the backend task definition | `number` | n/a | yes |
+| <a name="input_backend_task_definition_memory"></a> [backend_task_definition_memory](#input_backend_task_definition_memory) | The memory to reserve for the backend task definition | `number` | n/a | yes |
+| <a name="input_backend_service_desired_tasks"></a> [backend_service_desired_tasks](#input_backend_service_desired_tasks) | The desired tasks number for backend tasks | `number` | n/a | yes |
+| <a name="input_backend_task_db_user"></a> [backend_task_db_user](#input_backend_task_db_user) | Database username for the backend application | `string` | n/a | yes |
+| <a name="input_backend_task_db_password"></a> [backend_task_db_password](#input_backend_task_db_password) | Database password for the backend application | `string` | n/a | yes |
+| <a name="input_backend_task_db_port"></a> [backend_task_db_port](#input_backend_task_db_port) | Database port number | `number` | n/a | yes |
+| <a name="input_backend_task_db_name"></a> [backend_task_db_name](#input_backend_task_db_name) | Database name for the backend application | `string` | n/a | yes |
+| <a name="input_backend_task_db_host"></a> [backend_task_db_host](#input_backend_task_db_host) | Database host IP address or hostname | `string` | `null` | no |
 
 ## Outputs
 
@@ -106,8 +127,8 @@
 ##### Application Load Balancer Outputs
 | Name | Description |
 |------|-------------|
-| <a name="output_front_alb_dns"></a> [front_alb_dns](#output_front_alb_dns) | The DNS of front ALB |
-| <a name="output_back_alb_dns"></a> [back_alb_dns](#output_back_alb_dns) | The DNS of back ALB |
+| <a name="output_front_alb_dns"></a> [front_alb_dns](#output_front_alb_dns) | The DNS name of the frontend ALB |
+| <a name="output_back_alb_dns"></a> [back_alb_dns](#output_back_alb_dns) | The DNS name of the backend ALB |
 
 ##### ECS Outputs
 | Name | Description |
