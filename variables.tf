@@ -212,7 +212,6 @@ variable "backend_task_db_user" {
 variable "backend_task_db_password" {
   description = "Database password for the backend application"
   type        = string
-  sensitive   = true
 }
 
 variable "backend_task_db_port" {
