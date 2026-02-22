@@ -60,7 +60,7 @@ module "bastion_instance" {
   subnet_id     = module.vpc.public_subnets[0]
 
   key_name = aws_key_pair.bastion_key.key_name
-  user_data = base64encode(
+  user_data_base64 = base64encode(
     templatefile(
       "${path.module}/init_bastion.sh",
       { private_key = file("${path.module}/${var.prv_key_name}") }
