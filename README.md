@@ -30,7 +30,7 @@ ssh-keygen -y -f key.pem > key.pub
 
 ## Deployment Instructions
 
-1. Configure 'bastion_key_name' variable to reference your new private key name
+1. Configure 'pub_key_name' and 'prv_key_name' variables to reference your new ssh keys
 2. Initialize Terraform: `terraform init`
 3. Review plan: `terraform plan`
 4. Apply configuration: `terraform apply`

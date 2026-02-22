@@ -61,7 +61,8 @@
 | <a name="input_bastion_type"></a> [bastion_type](#input_bastion_type) | Bastion instance type | `string` | n/a | yes |
 | <a name="input_enable_bastion_monitoring"></a> [enable_bastion_monitoring](#input_enable_bastion_monitoring) | Enable/disable bastion instance monitoring | `bool` | `true` | no |
 | <a name="input_bastion_ingress_rule_cidr"></a> [bastion_ingress_rule_cidr](#input_bastion_ingress_rule_cidr) | The CIDR block of bastion security group ingress rule | `string` | `"0.0.0.0/0"` | no |
-| <a name="input_bastion_key_name"></a> [bastion_key_name](#input_bastion_key_name) | The name of SSH key to access your bastion instance | `string` | n/a | yes |
+| <a name="input_pub_key_name"></a> [pub_key_name](#input_pub_key_name) | The name of public SSH key to copy to your bastion instance and private EC2 instances and allow SSH access to them with your private key | `string` | n/a | yes |
+| <a name="input_prv_key_name"></a> [prv_key_name](#input_prv_key_name) | The name of private SSH key to copy to your bastion instance so it can SSH into the private EC2 instances | `string` | n/a | yes |
 | <a name="input_bastion_user_data"></a> [bastion_user_data](#input_bastion_user_data) | The .sh file for the user data | `string` | `null` | no |
 | <a name="input_bastion_storage_size"></a> [bastion_storage_size](#input_bastion_storage_size) | The storage to allocate in GB for the bastion instance | `number` | `30` | no |
 | <a name="input_bastion_allowed_db_port"></a> [bastion_allowed_db_port](#input_bastion_allowed_db_port) | The port of database service hosted in the bastion instance | `number` | n/a | yes |
