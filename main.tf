@@ -386,7 +386,7 @@ module "ecs" {
           environment = [
             {
               name  = "API_URL"
-              value = var.frontend_task_api_url != "" ? module.back_alb.dns_name : var.frontend_task_api_url
+              value = var.frontend_task_api_url == "" ? module.back_alb.dns_name : var.frontend_task_api_url
             }
           ]
 
