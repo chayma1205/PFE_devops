@@ -105,6 +105,8 @@ module "bastion_instance" {
     Name        = "${var.vpc_name}-bastion"
     Description = "Allow ssh to vpc's private instances"
   }
+
+  depends_on = [aws_key_pair.bastion_key]
 }
 
 # IAM role for ECS task execution
@@ -323,7 +325,7 @@ module "web_asg" {
     Purpose = "Deploy and scale simple web app - front and back"
   }
 
-  depends_on = [module.vpc]
+  depends_on = [module.vpc, aws_key_pair.bastion_key]
 }
 
 # ECS Cluster and Service
