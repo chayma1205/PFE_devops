@@ -46,7 +46,7 @@ module "vpc" {
 
 resource "aws_key_pair" "bastion_key" {
   key_name   = "bastion_key_pair"
-  public_key = file("${path.module}/${var.bastion_key_name}")
+  public_key = file("${path.module}/${var.pub_key_name}")
 }
 
 module "bastion_instance" {
@@ -63,7 +63,7 @@ module "bastion_instance" {
   user_data = base64encode(
     templatefile(
       "${path.module}/init_bastion.sh",
-      { private_key = file("${path.module}/${var.bastion_key_name}") }
+      { private_key = file("${path.module}/${var.prv_key_name}") }
     )
   )
 

@@ -80,9 +80,14 @@ variable "bastion_ingress_rule_cidr" {
   default     = "0.0.0.0/0"
 }
 
-variable "bastion_key_name" {
+variable "pub_key_name" {
   type        = string
-  description = "The name of ssh key to access your bastion instance"
+  description = "The name of public ssh key to copy to your bastion instance and private ec2 instances and allow ssh access to them with your private key"
+}
+
+variable "prv_key_name" {
+  type        = string
+  description = "The name of private ssh key to copy to your bastion instance so it can ssh into the private ec2 instances"
 }
 
 variable "bastion_user_data" {
