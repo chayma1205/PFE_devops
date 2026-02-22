@@ -59,8 +59,13 @@ module "bastion_instance" {
   monitoring    = var.enable_bastion_monitoring
   subnet_id     = module.vpc.public_subnets[0]
 
-  key_name  = aws_key_pair.bastion_key.key_name
-  user_data = var.bastion_user_data != null ? file("${path.module}/${var.bastion_user_data}") : ""
+  key_name = aws_key_pair.bastion_key.key_name
+  user_data = base64encode(
+    templatefile(
+      "${path.module}/init_bastion.sh",
+      { private_key = file("${path.module}/${var.bastion_key_name}") }
+    )
+  )
 
   # security group config
   create_security_group = true
