@@ -55,3 +55,12 @@ usermod -aG docker ubuntu
 git clone https://github.com/maissen/todo_app.git
 cd todo_app/db
 sudo docker compose up -d
+
+# Install aws cli
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+
+sudo apt-get update && sudo apt-get install -y unzip
+
+unzip awscliv2.zip
+
+sudo ./aws/install
