@@ -284,6 +284,9 @@ resource "aws_security_group" "ecs_instance_sg" {
   tags = {
     Name = "${var.vpc_name}-ecs-instance-sg"
   }
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # Auto Scaling Group
