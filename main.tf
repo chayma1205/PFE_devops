@@ -298,6 +298,7 @@ module "web_asg" {
   instance_type               = var.asg_instance_type
   enable_monitoring           = false
   security_groups             = [aws_security_group.ecs_instance_sg.id]
+  key_name                    = aws_key_pair.bastion_key.key_name
 
   user_data = base64encode(<<-EOF
     #!/bin/bash
