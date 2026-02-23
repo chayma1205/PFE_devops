@@ -90,12 +90,6 @@ variable "prv_key_name" {
   description = "The name of private ssh key to copy to your bastion instance so it can ssh into the private ec2 instances"
 }
 
-variable "bastion_user_data" {
-  type        = string
-  description = "the .sh file for the user data"
-  default     = null
-}
-
 variable "bastion_storage_size" {
   type        = number
   description = "The storage to allocate in Gb for the bastion instance"
