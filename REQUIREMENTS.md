@@ -11,6 +11,8 @@
 |------|---------|
 | <a name="provider_aws"></a> [aws](#provider_aws) | 6.30.0 |
 
+> **Note**: See [remote_backend_init/README.md](./remote_backend_init/README.md) for backend infrastructure documentation.
+
 ## Modules
 
 | Name | Source | Version |
@@ -30,6 +32,12 @@
 | [aws_iam_role_policy_attachment.ecs_task_execution_role_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [aws_key_pair.bastion_key](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/key_pair) | resource |
 | [aws_security_group.ecs_instance_sg](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group) | resource |
+
+## Files
+
+| Name | Description |
+|------|-------------|
+| [init_bastion.sh](./project/init_bastion.sh) | Bash script used as user data for the bastion instance. Sets up SSH keys, installs Docker, clones the todo_app repository, and starts the database container. Also installs AWS CLI. You can add custom instruction in this file
 
 ## Inputs
 
@@ -63,7 +71,6 @@
 | <a name="input_bastion_ingress_rule_cidr"></a> [bastion_ingress_rule_cidr](#input_bastion_ingress_rule_cidr) | The CIDR block of bastion security group ingress rule | `string` | `"0.0.0.0/0"` | no |
 | <a name="input_pub_key_name"></a> [pub_key_name](#input_pub_key_name) | The name of public SSH key to copy to your bastion instance and private EC2 instances and allow SSH access to them with your private key | `string` | n/a | yes |
 | <a name="input_prv_key_name"></a> [prv_key_name](#input_prv_key_name) | The name of private SSH key to copy to your bastion instance so it can SSH into the private EC2 instances | `string` | n/a | yes |
-| <a name="input_bastion_user_data"></a> [bastion_user_data](#input_bastion_user_data) | The .sh file for the user data | `string` | `null` | no |
 | <a name="input_bastion_storage_size"></a> [bastion_storage_size](#input_bastion_storage_size) | The storage to allocate in GB for the bastion instance | `number` | `30` | no |
 | <a name="input_bastion_allowed_db_port"></a> [bastion_allowed_db_port](#input_bastion_allowed_db_port) | The port of database service hosted in the bastion instance | `number` | n/a | yes |
 

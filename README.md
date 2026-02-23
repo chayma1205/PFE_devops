@@ -4,10 +4,12 @@ Terraform code to provision AWS infrastructure for the PFE project.
 
 ## File Descriptions
 
+**folder : project/**
 - **`.gitignore`** - Files Git should ignore (state files, logs, temp files)
 - **`.terraform.lock.hcl`** - Locks provider versions for reproducible deployments
-- **`main.tf`** - Main Terraform configuration
-- **`providers.tf`** - AWS provider configuration with region settings and default tags
+- **`main.tf`** - Main Terraform resources configuration
+- **`terraform.tf`** - Terraform and backend configurations
+- **`providers.tf`** - Providers configurations
 - **`variables.tf`** - Variable declarations for AWS resources
 - **`outputs.tf`** - Output values for provisioned resources
 
@@ -39,3 +41,4 @@ ssh-keygen -y -f key.pem > key.pub
 ## Documentation
 
 - [REQUIREMENTS.md](./REQUIREMENTS.md) - Detailed provider versions, module information, resources, inputs, and outputs
+- [Remote Backend Init docs](./remote_backend_init/readme.md) - Detailed remote backend Initialization
