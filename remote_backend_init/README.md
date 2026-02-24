@@ -32,6 +32,7 @@ This Terraform configuration creates the necessary AWS resources for remote stat
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
+| <a name="input_aws_region"></a> [aws_region](#input_dynamodb_table_name) | The region for the AWS remote backend s3 bucket and DynamoDB | `string` | `"us-east-1"` | no |
 | <a name="input_state_bucket_name"></a> [state_bucket_name](#input_state_bucket_name) | The remote state S3 bucket name, must be globally unique | `string` | n/a | yes |
 | <a name="input_dynamodb_table_name"></a> [dynamodb_table_name](#input_dynamodb_table_name) | The name of dynamoDB table to hold the state locking | `string` | `"state_lock"` | no |
 
@@ -40,6 +41,7 @@ This Terraform configuration creates the necessary AWS resources for remote stat
 
 1. **Initialize Terraform**:
    ```bash
+   cd remote_backend_init
    terraform init
    ```
 
