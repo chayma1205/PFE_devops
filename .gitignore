@@ -1,0 +1,17 @@
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate.backup
+
+# Keys & credentials (never commit these!)
+*.pem
+*.key
+*.tfvars   # if you have secrets in them
+aws-credentials
+
+# Windows / editors
+.DS_Store
+Thumbs.db
+*.log
