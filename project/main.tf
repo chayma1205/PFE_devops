@@ -536,11 +536,13 @@ module "ecs" {
           description = "VPC-only HTTP access"
         }
 
-        egress_http = {
+        egress_rds_db = {
           type        = "egress"
-          protocol    = "-1"
-          cidr_blocks = ["0.0.0.0/0"]
-          description = "All tcp egress"
+          protocol    = "tcp"
+          from_port   = var.rds_db_port
+          to_port     = var.rds_db_port
+          cidr_blocks = [var.vpc_cidr]
+          description = "Allow egress traffic to RDS db"
         }
       }
     }
@@ -565,7 +567,7 @@ module "db_rds" {
   username = var.rds_db_username
   port     = var.rds_db_port
 
-  vpc_security_group_ids = []
+  vpc_security_group_ids = [module.db_rds_sg.security_group_id]
   deletion_protection    = true
 
   allocated_storage     = var.rds_db_allocated_storage
@@ -576,4 +578,42 @@ module "db_rds" {
   create_db_subnet_group = true
   db_subnet_group_name   = module.vpc.database_subnet_group
   subnet_ids             = module.vpc.private_subnets
+}
+
+module "db_rds_sg" { # creating security groups for RDS
+  source  = "terraform-aws-modules/security-group/aws"
+  version = "5.3.1"
+
+  name        = "RDS-SG"
+  description = "Security group for RDS. Accepts traffic coming only within the vpc"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress_with_cidr_blocks = [
+    {
+      from_port                = var.rds_db_port
+      to_port                  = var.rds_db_port
+      protocol                 = "tcp"
+      description              = "Allow bastion access"
+      source_security_group_id = module.bastion_instance.security_group_id
+    },
+    {
+      from_port                = var.rds_db_port
+      to_port                  = var.rds_db_port
+      protocol                 = "tcp"
+      description              = "Allow ECS backend tasks access"
+      source_security_group_id = module.ecs.services["backend-task-definition"].security_group_id
+    }
+  ]
+
+  egress_with_cidr_blocks = [
+    {
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_blocks = "0.0.0.0/0"
+      description = "Allow all outbound"
+    }
+  ]
+
+  depends_on = [module.db_rds]
 }
