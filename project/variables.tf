@@ -228,3 +228,42 @@ variable "backend_task_db_host" {
   type        = string
   default     = null
 }
+
+#########
+# RDS
+#########
+
+variable "rds_instance_name" {
+  type        = string
+  description = "The name of the RDS instance"
+  default     = "app_db"
+}
+
+variable "rds_engine" {
+  type        = string
+  description = "The database engine to use"
+  default     = "postgres"
+}
+
+variable "rds_engine_version" {
+  type        = string
+  description = "The engine version to use"
+  default     = "17"
+}
+
+variable "rds_db_name" {
+  type        = string
+  description = "The DB name to create. If omitted, no database is created initially"
+}
+
+variable "rds_db_username" {
+  type        = string
+  description = "Username for the master DB user"
+  default     = "master"
+}
+
+variable "rds_db_port" {
+  type        = string
+  description = "The port on which the DB accepts connections"
+  default     = "5432"
+}

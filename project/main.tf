@@ -548,3 +548,26 @@ module "ecs" {
 
   depends_on = [module.web_asg, module.vpc, module.front_alb, module.back_alb, module.bastion_instance]
 }
+
+# DATABASE RDS
+module "db_rds" {
+  source  = "terraform-aws-modules/rds/aws"
+  version = "7.1.0"
+
+  # RDS config
+  identifier     = var.rds_instance_name
+  engine         = var.rds_engine
+  engine_version = var.rds_engine_version
+
+  # db config
+  db_name  = var.rds_db_name
+  username = var.rds_db_username
+  port     = var.rds_db_port
+
+  vpc_security_group_ids = []
+  deletion_protection    = true
+
+  # DB subnet group
+  create_db_subnet_group = true
+  subnet_ids             = module.vpc.private_subnets
+}
