@@ -251,6 +251,12 @@ variable "rds_engine_version" {
   default     = "17"
 }
 
+variable "rds_instance_class" {
+  type        = string
+  description = "The instance type of the RDS instance"
+  default     = "db.t4g.small"
+}
+
 variable "rds_db_name" {
   type        = string
   description = "The DB name to create. If omitted, no database is created initially"
@@ -266,4 +272,28 @@ variable "rds_db_port" {
   type        = string
   description = "The port on which the DB accepts connections"
   default     = "5432"
+}
+
+variable "rds_db_allocated_storage" {
+  type        = number
+  description = "The allocated storage in gigabytes, must be >= 20"
+  default     = 20
+}
+
+variable "rds_db_max_allocated_storage" {
+  type        = number
+  description = "Specifies the value for Storage Autoscaling"
+  default     = 100
+}
+
+variable "rds_multi_az" {
+  type        = bool
+  description = "Specifies if the RDS instance is multi-AZ"
+  default     = false
+}
+
+variable "rds_subnet_group_name" {
+  type        = string
+  description = "Name of DB subnet group. DB instance will be created in the VPC associated with the DB subnet group. If unspecified, will be created in the default VPC"
+  default     = "my-subnet-group"
 }

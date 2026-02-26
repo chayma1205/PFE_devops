@@ -558,6 +558,7 @@ module "db_rds" {
   identifier     = var.rds_instance_name
   engine         = var.rds_engine
   engine_version = var.rds_engine_version
+  instance_class = var.rds_instance_class
 
   # db config
   db_name  = var.rds_db_name
@@ -567,7 +568,12 @@ module "db_rds" {
   vpc_security_group_ids = []
   deletion_protection    = true
 
+  allocated_storage     = var.rds_db_allocated_storage
+  max_allocated_storage = var.rds_db_max_allocated_storage
+
   # DB subnet group
+  multi_az               = var.rds_multi_az
   create_db_subnet_group = true
+  db_subnet_group_name   = module.vpc.database_subnet_group
   subnet_ids             = module.vpc.private_subnets
 }
