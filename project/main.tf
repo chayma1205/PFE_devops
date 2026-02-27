@@ -563,8 +563,7 @@ module "secrets-manager" {
   ignore_secret_changes   = false
 
   secret_string = jsonencode({
-    username = "master"
-    password = random_password.rds_tododb_random_password.result
+    tododb_password = random_password.rds_tododb_random_password.result
   })
 
   depends_on = [random_password.rds_tododb_random_password]
@@ -589,6 +588,8 @@ module "db_rds" {
   username = var.rds_db_username
   port     = var.rds_db_port
 
+  password_wo = jsondecode(module.secrets-manager.secret_string)["tododb_password"]
+
   vpc_security_group_ids    = [module.db_rds_sg.security_group_id]
   deletion_protection       = false
   create_db_parameter_group = false
@@ -603,7 +604,7 @@ module "db_rds" {
   db_subnet_group_name   = module.vpc.database_subnet_group
   subnet_ids             = module.vpc.private_subnets
 
-  depends_on = [module.vpc]
+  depends_on = [module.vpc, module.secrets-manager]
 }
 
 module "db_rds_sg" { # creating security groups for RDS
