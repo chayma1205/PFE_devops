@@ -23,6 +23,8 @@
 | <a name="module_back_alb"></a> [back_alb](#module_back_alb) | terraform-aws-modules/alb/aws | 10.5.0 |
 | <a name="module_web_asg"></a> [web_asg](#module_web_asg) | terraform-aws-modules/autoscaling/aws | n/a |
 | <a name="module_ecs"></a> [ecs](#module_ecs) | terraform-aws-modules/ecs/aws | n/a |
+| <a name="module_db_rds"></a> [db_rds](#module_db_rds) | terraform-aws-modules/rds/aws | 7.1.0 |
+| <a name="module_db_rds_sg"></a> [db_rds_sg](#module_db_rds_sg) | terraform-aws-modules/security-group/aws | 5.3.1 |
 
 ## Resources
 
@@ -109,6 +111,21 @@
 | <a name="input_backend_task_db_name"></a> [backend_task_db_name](#input_backend_task_db_name) | Database name for the backend application | `string` | n/a | yes |
 | <a name="input_backend_task_db_host"></a> [backend_task_db_host](#input_backend_task_db_host) | Database host IP address or hostname | `string` | `null` | no |
 
+##### RDS Configuration
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| <a name="input_rds_instance_name"></a> [rds_instance_name](#input_rds_instance_name) | The name of the RDS instance | `string` | `"app_db"` | no |
+| <a name="input_rds_engine"></a> [rds_engine](#input_rds_engine) | The database engine to use | `string` | `"postgres"` | no |
+| <a name="input_rds_engine_version"></a> [rds_engine_version](#input_rds_engine_version) | The engine version to use | `string` | `"17"` | no |
+| <a name="input_rds_instance_class"></a> [rds_instance_class](#input_rds_instance_class) | The instance type of the RDS instance | `string` | `"db.t4g.small"` | no |
+| <a name="input_rds_db_name"></a> [rds_db_name](#input_rds_db_name) | The DB name to create. If omitted, no database is created initially | `string` | n/a | yes |
+| <a name="input_rds_db_username"></a> [rds_db_username](#input_rds_db_username) | Username for the master DB user | `string` | `"master"` | no |
+| <a name="input_rds_db_port"></a> [rds_db_port](#input_rds_db_port) | The port on which the DB accepts connections | `string` | `"5432"` | no |
+| <a name="input_rds_db_allocated_storage"></a> [rds_db_allocated_storage](#input_rds_db_allocated_storage) | The allocated storage in gigabytes, must be >= 20 | `number` | `20` | no |
+| <a name="input_rds_db_max_allocated_storage"></a> [rds_db_max_allocated_storage](#input_rds_db_max_allocated_storage) | Specifies the value for Storage Autoscaling | `number` | `100` | no |
+| <a name="input_rds_multi_az"></a> [rds_multi_az](#input_rds_multi_az) | Specifies if the RDS instance is multi-AZ | `bool` | `false` | no |
+| <a name="input_rds_subnet_group_name"></a> [rds_subnet_group_name](#input_rds_subnet_group_name) | Name of DB subnet group. DB instance will be created in the VPC associated with the DB subnet group. If unspecified, will be created in the default VPC | `string` | `"my-subnet-group"` | no |
+
 ## Outputs
 
 ##### VPC Outputs
@@ -143,3 +160,13 @@
 |------|-------------|
 | <a name="output_ecs_cluster_name"></a> [ecs_cluster_name](#output_ecs_cluster_name) | ECS cluster name |
 | <a name="output_ecs_cluster_arn"></a> [ecs_cluster_arn](#output_ecs_cluster_arn) | ECS cluster ARN |
+
+##### RDS Outputs
+| Name | Description |
+|------|-------------|
+| <a name="output_rds_endpoint"></a> [rds_endpoint](#output_rds_endpoint) | RDS instance endpoint (includes port) |
+| <a name="output_rds_address"></a> [rds_address](#output_rds_address) | RDS instance address (hostname only, no port) |
+| <a name="output_rds_port"></a> [rds_port](#output_rds_port) | RDS instance port |
+| <a name="output_rds_database_name"></a> [rds_database_name](#output_rds_database_name) | Name of the database |
+| <a name="output_rds_username"></a> [rds_username](#output_rds_username) | Master username for the database (sensitive) |
+| <a name="output_rds_instance_id"></a> [rds_instance_id](#output_rds_instance_id) | RDS instance ID |
