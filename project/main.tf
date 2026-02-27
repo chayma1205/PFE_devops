@@ -551,7 +551,29 @@ module "ecs" {
   depends_on = [module.web_asg, module.vpc, module.front_alb, module.back_alb, module.bastion_instance]
 }
 
-# DATABASE RDS
+# # DATABASE RDS
+module "secrets-manager" {
+  source  = "terraform-aws-modules/secrets-manager/aws"
+  version = "2.1.0"
+
+  name        = "RDS-secrets"
+  description = "The secrets needed for all RDS db in this aws account"
+
+  recovery_window_in_days = 30
+  ignore_secret_changes   = false
+
+  secret_string = jsonencode({
+    username = "master"
+    password = random_password.rds_tododb_random_password.result
+  })
+
+  depends_on = [random_password.rds_tododb_random_password]
+}
+
+resource "random_password" "rds_tododb_random_password" {
+  length = 20
+}
+
 module "db_rds" {
   source  = "terraform-aws-modules/rds/aws"
   version = "7.1.0"
