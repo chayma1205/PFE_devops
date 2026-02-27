@@ -567,17 +567,21 @@ module "db_rds" {
   username = var.rds_db_username
   port     = var.rds_db_port
 
-  vpc_security_group_ids = [module.db_rds_sg.security_group_id]
-  deletion_protection    = true
+  vpc_security_group_ids    = [module.db_rds_sg.security_group_id]
+  deletion_protection       = false
+  create_db_parameter_group = false
 
   allocated_storage     = var.rds_db_allocated_storage
   max_allocated_storage = var.rds_db_max_allocated_storage
+  storage_type          = "gp2"
 
   # DB subnet group
   multi_az               = var.rds_multi_az
   create_db_subnet_group = true
   db_subnet_group_name   = module.vpc.database_subnet_group
   subnet_ids             = module.vpc.private_subnets
+
+  depends_on = [module.vpc]
 }
 
 module "db_rds_sg" { # creating security groups for RDS
@@ -588,7 +592,7 @@ module "db_rds_sg" { # creating security groups for RDS
   description = "Security group for RDS. Accepts traffic coming only within the vpc"
   vpc_id      = module.vpc.vpc_id
 
-  ingress_with_cidr_blocks = [
+  ingress_with_source_security_group_id = [
     {
       from_port                = var.rds_db_port
       to_port                  = var.rds_db_port
@@ -615,5 +619,5 @@ module "db_rds_sg" { # creating security groups for RDS
     }
   ]
 
-  depends_on = [module.db_rds]
+  depends_on = [module.bastion_instance]
 }
