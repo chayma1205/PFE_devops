@@ -64,3 +64,27 @@ sudo apt-get update && sudo apt-get install -y unzip
 unzip awscliv2.zip
 
 sudo ./aws/install
+
+# Get database credentials from Secrets Manager and prepare to launch init.sql for RDS tododb
+echo "Retrieving database credentials..."
+SECRET_ARN="${rds_secret_arn}"
+DB_PASSWORD=$(aws secretsmanager get-secret-value \
+  --secret-id $SECRET_ARN \
+  --region ${aws_region} \
+  --query SecretString \
+  --output text | jq -r .password)
+
+# Initialize the database
+echo "Initializing database with init.sql..."
+mysql -h $RDS_ENDPOINT \
+      -P $RDS_PORT \
+      -u ${rds_username} \
+      -p"$DB_PASSWORD" \
+      ${rds_db_name} < ./init.sql
+
+if [ $? -eq 0 ]; then
+  echo "Database initialization completed successfully!"
+else
+  echo "Database initialization failed!"
+  exit 1
+fi
