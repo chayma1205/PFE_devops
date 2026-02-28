@@ -58,8 +58,8 @@ module "bastion_instance" {
   instance_type = var.bastion_type
   monitoring    = var.enable_bastion_monitoring
   subnet_id     = module.vpc.public_subnets[0]
+  key_name      = aws_key_pair.bastion_key.key_name
 
-  key_name = aws_key_pair.bastion_key.key_name
   user_data_base64 = base64encode(
     templatefile(
       "${path.module}/init_bastion.sh",
@@ -118,7 +118,7 @@ module "bastion_instance" {
     Description = "Allow ssh to vpc's private instances"
   }
 
-  depends_on = [aws_key_pair.bastion_key, module.db_rds]
+  depends_on = [aws_key_pair.bastion_key]
 }
 
 # IAM role for bastion to access secrets manager
@@ -656,20 +656,13 @@ module "db_rds_sg" { # creating security groups for RDS
   description = "Security group for RDS. Accepts traffic coming only within the vpc"
   vpc_id      = module.vpc.vpc_id
 
-  ingress_with_source_security_group_id = [
+  ingress_with_cidr_blocks = [
     {
-      from_port                = var.rds_db_port
-      to_port                  = var.rds_db_port
-      protocol                 = "tcp"
-      description              = "Allow bastion access"
-      source_security_group_id = module.bastion_instance.security_group_id
-    },
-    {
-      from_port                = var.rds_db_port
-      to_port                  = var.rds_db_port
-      protocol                 = "tcp"
-      description              = "Allow ECS backend tasks access"
-      source_security_group_id = module.ecs.services["backend-task-definition"].security_group_id
+      from_port   = var.rds_db_port
+      to_port     = var.rds_db_port
+      protocol    = "tcp"
+      description = "Allow bastion access"
+      cidr_blocks = var.vpc_cidr
     }
   ]
 
@@ -682,6 +675,4 @@ module "db_rds_sg" { # creating security groups for RDS
       description = "Allow all outbound"
     }
   ]
-
-  depends_on = [module.bastion_instance]
 }
