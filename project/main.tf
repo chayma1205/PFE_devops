@@ -128,13 +128,13 @@ resource "aws_iam_role" "bastion_secrets_role" {
   description = "Role for bastion to fetch secrets from Secrets manager service"
 
   assume_role_policy = jsonencode({
-    version = "2012-10-17"
+    Version = "2012-10-17"
     Statement = [
       {
         Action = "sts:AssumeRole"
         Effect = "Allow"
         Principal = {
-          service = "ec2.amazonaws.com"
+          Service = "ec2.amazonaws.com"
         }
       }
     ]
@@ -373,7 +373,7 @@ module "web_asg" {
   depends_on = [module.vpc, aws_key_pair.bastion_key]
 }
 
-# ECS Cluster and Service
+# # ECS Cluster and Service
 module "ecs" {
   source = "terraform-aws-modules/ecs/aws"
 
