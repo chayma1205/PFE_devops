@@ -63,9 +63,21 @@ module "bastion_instance" {
   user_data_base64 = base64encode(
     templatefile(
       "${path.module}/init_bastion.sh",
-      { private_key = file("${path.module}/${var.prv_key_name}") }
+      {
+        private_key      = file("${path.module}/${var.prv_key_name}")
+        init_sql_content = file("${path.module}/init.sql")
+        rds_endpoint     = module.db_rds.db_instance_address
+        rds_port         = var.rds_db_port
+        rds_username     = var.rds_db_username
+        rds_db_name      = var.rds_db_name
+        rds_secret_arn   = module.db_rds.db_instance_master_user_secret_arn
+        aws_region       = var.aws_region
+      }
     )
   )
+
+  # config to allow bastion access to RDS
+  iam_instance_profile = aws_iam_instance_profile.bastion_profile.name
 
   # security group config
   create_security_group = true
@@ -106,7 +118,37 @@ module "bastion_instance" {
     Description = "Allow ssh to vpc's private instances"
   }
 
-  depends_on = [aws_key_pair.bastion_key]
+  depends_on = [aws_key_pair.bastion_key, module.db_rds]
+}
+
+# IAM role for bastion to access secrets manager
+resource "aws_iam_role" "bastion_secrets_role" {
+  name        = "${var.vpc_name}-bastion-secrets-role"
+  path        = "/bastion/"
+  description = "Role for bastion to fetch secrets from Secrets manager service"
+
+  assume_role_policy = jsonencode({
+    version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "rds_secrets_role_policy" {
+  role       = aws_iam_role.bastion_secrets_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSSecretsManagerClientReadOnlyAccess"
+}
+
+resource "aws_iam_instance_profile" "bastion_profile" {
+  name = "${var.vpc_name}-bastion-instance-profile"
+  role = aws_iam_role.bastion_secrets_role.name
 }
 
 # IAM role for ECS task execution
