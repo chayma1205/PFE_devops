@@ -551,7 +551,7 @@ module "ecs" {
   depends_on = [module.web_asg, module.vpc, module.front_alb, module.back_alb, module.bastion_instance]
 }
 
-# # DATABASE RDS
+# DATABASE RDS
 module "secrets-manager" {
   source  = "terraform-aws-modules/secrets-manager/aws"
   version = "2.1.0"
@@ -584,11 +584,10 @@ module "db_rds" {
   instance_class = var.rds_instance_class
 
   # db config
-  db_name  = var.rds_db_name
-  username = var.rds_db_username
-  port     = var.rds_db_port
-
-  password_wo = jsondecode(module.secrets-manager.secret_string)["tododb_password"]
+  db_name                     = var.rds_db_name
+  username                    = var.rds_db_username
+  port                        = var.rds_db_port
+  manage_master_user_password = true # rds module will create automatically the db password managed with secrets manager
 
   vpc_security_group_ids    = [module.db_rds_sg.security_group_id]
   deletion_protection       = false
@@ -604,7 +603,7 @@ module "db_rds" {
   db_subnet_group_name   = module.vpc.database_subnet_group
   subnet_ids             = module.vpc.private_subnets
 
-  depends_on = [module.vpc, module.secrets-manager]
+  depends_on = [module.vpc]
 }
 
 module "db_rds_sg" { # creating security groups for RDS
