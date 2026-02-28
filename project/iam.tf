@@ -24,7 +24,7 @@ module "iam_bastion" {
   }
 }
 
-module "iam_ecs_backend" {
+module "iam_ecs_task_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role"
   version = "6.4.0"
 
