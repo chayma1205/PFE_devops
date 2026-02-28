@@ -121,36 +121,6 @@ module "bastion_instance" {
   depends_on = [aws_key_pair.bastion_key]
 }
 
-# IAM role for bastion to access secrets manager
-resource "aws_iam_role" "bastion_secrets_role" {
-  name        = "${var.vpc_name}-bastion-secrets-role"
-  path        = "/bastion/"
-  description = "Role for bastion to fetch secrets from Secrets manager service"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        }
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "rds_secrets_role_policy" {
-  role       = aws_iam_role.bastion_secrets_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AWSSecretsManagerClientReadOnlyAccess"
-}
-
-resource "aws_iam_instance_profile" "bastion_profile" {
-  name = "${var.vpc_name}-bastion-instance-profile"
-  role = aws_iam_role.bastion_secrets_role.name
-}
-
 # IAM role for ECS task execution
 resource "aws_iam_role" "ecs_task_execution_role" {
   name        = "${var.vpc_name}-ecs-task-execution-role"
