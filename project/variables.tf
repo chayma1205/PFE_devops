@@ -223,11 +223,6 @@ variable "backend_task_db_name" {
   type        = string
 }
 
-variable "backend_task_db_host" {
-  description = "Database host IP address or hostname"
-  type        = string
-  default     = null
-}
 
 #########
 # RDS
