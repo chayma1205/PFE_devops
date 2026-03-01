@@ -109,7 +109,7 @@
 | <a name="input_backend_task_db_password"></a> [backend_task_db_password](#input_backend_task_db_password) | Database password for the backend application | `string` | n/a | yes |
 | <a name="input_backend_task_db_port"></a> [backend_task_db_port](#input_backend_task_db_port) | Database port number | `number` | n/a | yes |
 | <a name="input_backend_task_db_name"></a> [backend_task_db_name](#input_backend_task_db_name) | Database name for the backend application | `string` | n/a | yes |
-| <a name="input_backend_task_db_host"></a> [backend_task_db_host](#input_backend_task_db_host) | Database host IP address or hostname | `string` | `null` | no |
+
 
 ##### RDS Configuration
 | Name | Description | Type | Default | Required |
