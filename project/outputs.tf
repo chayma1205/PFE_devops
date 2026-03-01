@@ -87,13 +87,8 @@ output "ecs_cluster_arn" {
 # RDS
 #########
 
-output "rds_endpoint" {
-  description = "RDS instance endpoint (includes port)"
-  value       = module.db_rds.db_instance_endpoint
-}
-
 output "rds_address" {
-  description = "RDS instance address (hostname only, no port)"
+  description = "RDS instance address"
   value       = module.db_rds.db_instance_address
 }
 
@@ -107,10 +102,9 @@ output "rds_database_name" {
   value       = module.db_rds.db_instance_name
 }
 
-output "rds_username" {
-  description = "Master username for the database"
-  value       = module.db_rds.db_instance_username
-  sensitive   = true
+output "rds_secret_arn" {
+  description = "RDS secret ARN (from secrets manager)"
+  value       = module.db_rds.db_instance_master_user_secret_arn
 }
 
 # RDS Resource Identifiers
