@@ -455,14 +455,6 @@ module "ecs" {
 
           environment = [
             {
-              name  = "DB_USER"
-              value = var.backend_task_db_user
-            },
-            {
-              name  = "DB_PASSWORD"
-              value = var.backend_task_db_password
-            },
-            {
               name  = "DB_PORT"
               value = tostring(var.backend_task_db_port)
             },
@@ -476,6 +468,11 @@ module "ecs" {
               value = module.bastion_instance.private_ip
             }
           ]
+
+          secrets = {
+            DB_USER     = { name = "username", valueFrom = module.db_rds.db_instance_master_user_secret_arn }
+            DB_PASSWORD = { name = "password", valueFrom = module.db_rds.db_instance_master_user_secret_arn }
+          }
 
           port_mappings = {
             http = {
