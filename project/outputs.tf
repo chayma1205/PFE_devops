@@ -25,6 +25,21 @@ output "bastion_public_ip" {
   value       = module.bastion_instance.public_ip
 }
 
+output "bastion_instance_id" {
+  description = "The instance ID of bastion instance"
+  value       = module.bastion_instance.id
+}
+
+output "bastion_security_group_id" {
+  description = "The security group ID of bastion instance"
+  value       = module.bastion_instance.security_group_id
+}
+
+output "bastion_key_pair_name" {
+  description = "The key pair name used for bastion instance"
+  value       = aws_key_pair.bastion_key.key_name
+}
+
 #########
 # ASG
 #########
