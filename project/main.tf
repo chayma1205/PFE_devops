@@ -456,16 +456,15 @@ module "ecs" {
           environment = [
             {
               name  = "DB_PORT"
-              value = tostring(var.backend_task_db_port)
+              value = tostring(module.db_rds.db_instance_port)
             },
             {
               name  = "DB_NAME"
-              value = var.backend_task_db_name
+              value = module.db_rds.db_instance_name
             },
             {
-              name = "DB_HOST"
-              # value = var.backend_task_db_host # desabled because the bastion ec2 is hosting the db temporarly
-              value = module.bastion_instance.private_ip
+              name  = "DB_HOST"
+              value = module.db_rds.db_instance_address
             }
           ]
 
