@@ -293,13 +293,14 @@ resource "aws_iam_role_policy_attachment" "ecs_task_ssm_read" {
 
 //ecs services
 resource "aws_ecs_task_definition" "backend" {
-  family                   = "${var.project_name}-backend"
+  family                   = "${var.project_name}-${var.environment}-backend"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "512"
-  memory                   = "1024"
+  cpu                      = tostring(var.backend_cpu)
+  memory                   = tostring(var.backend_memory)
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   task_role_arn      = aws_iam_role.ecs_task_role.arn
+
   container_definitions = jsonencode([
     {
       name      = "backend"
@@ -327,7 +328,7 @@ resource "aws_ecs_task_definition" "backend" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = "/ecs/${var.project_name}-backend"
+          "awslogs-group"         = "/ecs/${var.project_name}-${var.environment}-backend"
           "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "backend"
         }
@@ -337,10 +338,10 @@ resource "aws_ecs_task_definition" "backend" {
 }
 
 resource "aws_ecs_service" "backend" {
-  name                               = "${var.project_name}-backend"
+  name                               = "${var.project_name}-${var.environment}-backend"
   cluster                            = aws_ecs_cluster.main.id
   task_definition                    = aws_ecs_task_definition.backend.arn
-  desired_count                      = 1
+  desired_count                      = var.backend_desired_count
   launch_type                        = "FARGATE"
   deployment_maximum_percent         = 200
   deployment_minimum_healthy_percent = 100
@@ -365,11 +366,11 @@ resource "aws_ecs_service" "backend" {
 
 
 resource "aws_ecs_task_definition" "frontend" {
-  family                   = "${var.project_name}-frontend"
+  family                   = "${var.project_name}-${var.environment}-frontend"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "256"
-  memory                   = "512"
+  cpu                      = tostring(var.frontend_cpu)    
+  memory                   = tostring(var.frontend_memory)
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
 
   container_definitions = jsonencode([
@@ -399,10 +400,10 @@ resource "aws_ecs_task_definition" "frontend" {
 }
 
 resource "aws_ecs_service" "frontend" {
-  name                               = "${var.project_name}-frontend"
+  name                               = "${var.project_name}-${var.environment}-frontend"
   cluster                            = aws_ecs_cluster.main.id
   task_definition                    = aws_ecs_task_definition.frontend.arn
-  desired_count                      = 1
+  desired_count                      = var.frontend_desired_count
   launch_type                        = "FARGATE"
 
   load_balancer {
@@ -438,12 +439,12 @@ module "rds_postgres" {
   source  = "terraform-aws-modules/rds/aws"
   version = "~> 7.0"   
 
-  identifier = "${var.project_name}-postgres"
+  identifier = "${var.project_name}-${var.environment}-postgres"
 
   engine               = "postgres"
   engine_version       = "15"
-  instance_class       = "db.t3.micro"         
-  allocated_storage    = 20
+  instance_class       = var.rds_instance_class        
+  allocated_storage    = var.rds_allocated_storage
   storage_type         = "gp2"              
 
   db_name  = "tododb"
@@ -457,8 +458,8 @@ module "rds_postgres" {
   vpc_security_group_ids   = [aws_security_group.rds_sg.id]   
 
   publicly_accessible    = false
-  multi_az               = false               
-  backup_retention_period = 7
+  multi_az               = var.rds_multi_az             
+  backup_retention_period = var.rds_backup_retention_period
   skip_final_snapshot    = true                
   deletion_protection    = false               
 
@@ -474,9 +475,9 @@ module "rds_postgres" {
   
 }
 resource "aws_ssm_parameter" "db_password" {
-  name  = "/${var.project_name}/db/password"
+  name  = "/${var.project_name}-${var.environment}/db/password"
   type  = "SecureString"   
-  value = "maissenmaissen"   
+  value = var.db_password_ssm_value   
 
   tags = {
     Project     = var.project_name
