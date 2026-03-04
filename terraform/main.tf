@@ -36,11 +36,7 @@ module "vpc" {
   }
 }
 
-//AKIAU6GDZMRB4CSVIYEM
 
-//dJ9axyrQ32+ZF2ggwXeeV8l7+lzQJWsFTJ1HQ8Zn
-
-//docker compose up -d
 
 //ALB
 resource "aws_lb" "frontend" {
@@ -70,7 +66,7 @@ resource "aws_lb_target_group" "frontend" {
 
   health_check {
     enabled             = true
-    path                = "/"          # or /health if your Flask has one
+    path                = "/"          
     interval            = 30
     timeout             = 5
     healthy_threshold   = 3
@@ -125,9 +121,6 @@ resource "aws_lb_target_group" "backend" {
     Name = "${var.project_name}-backend-tg"
   }
 }
-//multi env dev w prof , kol whda specefication cpu w memory replica diff,  l env variables ykounou secrets msh nes kol tchoufha par exemple token , nestaamlou secret manager , rds
-//rds f private subnet ? 1 alb khw ? ssm ll pwd 
-//nhoto secret w n3adih f task eli houa , block ekher fl env variables esmou secrets, l env var nwli ndakhlha m secret, resource
 
 //ecr
 resource "aws_ecr_repository" "backend" {
