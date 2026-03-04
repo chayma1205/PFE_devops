@@ -5,10 +5,30 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
+import boto3
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+def get_db_password():
+    param_path = os.getenv("SSM_DB_PASSWORD_PATH")
+    region     = os.getenv("AWS_REGION", "us-east-1")
+
+    if not param_path:
+        raise ValueError("SSM_DB_PASSWORD_PATH environment variable is required")
+
+    logger.info(f"Fetching password from SSM: {param_path}")
+
+    client = boto3.client('ssm', region_name=region)
+    response = client.get_parameter(
+        Name=param_path,
+        WithDecryption=True  
+    )
+    return response['Parameter']['Value']
 
 # Database configuration (defaults can stay, but env vars will override)
 DB_USER = os.getenv("DB_USER", "maissen")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "maissen")
+DB_PASSWORD = os.getenv("DB_PASSWORD") 
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = os.getenv("DB_PORT", "5432")          # ← changed default to 5432
 DB_NAME = os.getenv("DB_NAME", "tododb")

@@ -265,7 +265,30 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   role       = aws_iam_role.ecs_task_execution_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
+resource "aws_iam_role_policy_attachment" "ecs_ssm_read" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess"
+}
+resource "aws_iam_role" "ecs_task_role" {
+  name = "${var.project_name}-ecs-task-role"
 
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+resource "aws_iam_role_policy_attachment" "ecs_task_ssm_read" {
+  role       = aws_iam_role.ecs_task_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess"
+}
 
 
 //ecs services
@@ -276,7 +299,7 @@ resource "aws_ecs_task_definition" "backend" {
   cpu                      = "512"
   memory                   = "1024"
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
-
+  task_role_arn      = aws_iam_role.ecs_task_role.arn
   container_definitions = jsonencode([
     {
       name      = "backend"
@@ -289,11 +312,17 @@ resource "aws_ecs_task_definition" "backend" {
         }
       ]
       environment = [
+        { name = "AWS_REGION",           value = var.aws_region },
         { name = "DB_USER", value = "maissen" },
-        { name = "DB_PASSWORD", value = "maissenmaissen" },
         { name = "DB_NAME", value = "tododb" },
         { name = "DB_HOST", value = module.rds_postgres.db_instance_address },
         { name = "DB_PORT", value = tostring(module.rds_postgres.db_instance_port) },
+      ]
+      secrets = [
+        {
+          name = "DB_PASSWORD"
+          valueFrom= aws_ssm_parameter.db_password.arn
+        }  
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -407,36 +436,47 @@ resource "aws_cloudwatch_log_group" "ecs_logs" {
 
 module "rds_postgres" {
   source  = "terraform-aws-modules/rds/aws"
-  version = "~> 7.0"   # Use latest stable; as of now ~>7.1 or check registry for newest
+  version = "~> 7.0"   
 
   identifier = "${var.project_name}-postgres"
 
   engine               = "postgres"
   engine_version       = "15"
-  //family               = "postgres15"          # Required if creating parameter group
-  instance_class       = "db.t3.micro"         # Free tier eligible
+  instance_class       = "db.t3.micro"         
   allocated_storage    = 20
-  storage_type         = "gp2"                 # or gp3 for newer
+  storage_type         = "gp2"              
 
   db_name  = "tododb"
-  username = "maissen"
-  password_wo = "maissenmaissen"                         # In prod → use random_password or secrets manager
+  username = "maissen"  
+  password_wo  = aws_ssm_parameter.db_password.value
+  password_wo_version = 1
+  manage_master_user_password = false
 
  // vpc_id               = module.vpc.vpc_id
   subnet_ids           = module.vpc.private_subnets
-  vpc_security_group_ids   = [aws_security_group.rds_sg.id]   # We'll keep/create this SG
+  vpc_security_group_ids   = [aws_security_group.rds_sg.id]   
 
   publicly_accessible    = false
-  multi_az               = false               # Set true later for HA
+  multi_az               = false               
   backup_retention_period = 7
-  skip_final_snapshot    = true                # For dev/testing (set false in prod)
-  deletion_protection    = false               # Set true in prod
+  skip_final_snapshot    = true                
+  deletion_protection    = false               
 
-  create_db_subnet_group = true                # Module creates it automatically
-  create_db_parameter_group = false             # Creates one based on family
+  create_db_subnet_group = true                
+  create_db_parameter_group = false             
 
-  # Optional: enable CloudWatch logs for PostgreSQL
   enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
+
+  tags = {
+    Project     = var.project_name
+    Environment = var.environment
+  }
+  
+}
+resource "aws_ssm_parameter" "db_password" {
+  name  = "/${var.project_name}/db/password"
+  type  = "SecureString"   
+  value = "maissenmaissen"   
 
   tags = {
     Project     = var.project_name
