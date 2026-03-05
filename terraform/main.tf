@@ -328,7 +328,7 @@ resource "aws_ecs_task_definition" "backend" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = "/ecs/${var.project_name}-${var.environment}-backend"
+          "awslogs-group"         = "/ecs/${var.project_name}--${var.environment}${var.environment}-backend"
           "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "backend"
         }
@@ -390,7 +390,7 @@ resource "aws_ecs_task_definition" "frontend" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = "/ecs/${var.project_name}-frontend"
+          "awslogs-group"         = "/ecs/${var.project_name}-${var.environment}-frontend"
           "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "frontend"
         }
@@ -424,9 +424,9 @@ resource "aws_ecs_service" "frontend" {
   }
 }
 resource "aws_cloudwatch_log_group" "ecs_logs" {
-  for_each = toset(["${var.project_name}-backend", "${var.project_name}-frontend"])
+  for_each = toset(["backend", "frontend"])
 
-  name              = "/ecs/${each.key}"
+  name              = "/ecs/${var.project_name}-${var.environment}-${each.key}"
 
   tags = {
     Project     = var.project_name
@@ -508,3 +508,5 @@ resource "aws_security_group" "rds_sg" {
     Environment = var.environment
   }
 }
+
+//AKIAZI2LCMOMVOMFVEGR    ETpc160BXEXjYF5lYdPYC01ikk/qpQoXRb9S+s2s
