@@ -347,7 +347,7 @@ module "ecs" {
       network_mode             = "awsvpc"
 
       # remove asg configs
-      enable_autoscaling = false
+      enable_autoscaling       = false
       autoscaling_min_capacity = null
       autoscaling_max_capacity = null
 
@@ -425,7 +425,7 @@ module "ecs" {
       network_mode             = "awsvpc"
 
       # remove asg configs
-      enable_autoscaling = false
+      enable_autoscaling       = false
       autoscaling_min_capacity = null
       autoscaling_max_capacity = null
 

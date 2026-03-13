@@ -48,6 +48,32 @@ module "iam_ecs_task_role" {
 
   policies = {
     AWSSecretsManagerClientReadOnlyAccess = "arn:aws:iam::aws:policy/AWSSecretsManagerClientReadOnlyAccess"
-    AmazonECSTaskExecutionRolePolicy      = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+  }
+}
+
+module "iam_ecs_task_exec_role" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role"
+  version = "6.4.0"
+
+  name                    = "${var.vpc_name}-ecs-task-execution-role"
+  use_name_prefix         = false
+  create_instance_profile = false
+
+  description = "This role is for ECS agents, using this custom role in order to avoid creating a new role for each task definition by the ecs module"
+
+  trust_policy_permissions = {
+    TrustRoleAndServiceToAssume = {
+      actions = ["sts:AssumeRole"]
+      principals = [
+        {
+          type        = "Service"
+          identifiers = ["ecs-tasks.amazonaws.com"]
+        }
+      ]
+    }
+  }
+
+  policies = {
+    AmazonECSTaskExecutionRolePolicy = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
   }
 }
