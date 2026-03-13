@@ -59,15 +59,15 @@ output "back_alb_dns" {
 # ECS
 #########
 
-# output "ecs_cluster_name" {
-#   description = "ECS cluster name"
-#   value       = module.ecs.cluster_name
-# }
+output "ecs_cluster_name" {
+  description = "ECS cluster name"
+  value       = module.ecs.cluster_name
+}
 
-# output "ecs_cluster_arn" {
-#   description = "ECS cluster ARN"
-#   value       = module.ecs.cluster_arn
-# }
+output "ecs_cluster_arn" {
+  description = "ECS cluster ARN"
+  value       = module.ecs.cluster_arn
+}
 
 
 #########
