@@ -349,6 +349,9 @@ module "ecs" {
       task_exec_iam_role_arn    = module.iam_ecs_task_exec_role.arn
       create_task_exec_iam_role = false
 
+      # ECS task role
+      create_tasks_iam_role = false
+
       # remove asg configs
       enable_autoscaling       = false
       autoscaling_min_capacity = null
@@ -358,6 +361,9 @@ module "ecs" {
         frontend = {
           essential = true
           image     = "maissendev/todo-frontend"
+
+          # without this, the frontend container will keep crashing
+          readonlyRootFilesystem = false
 
           environment = [
             {
