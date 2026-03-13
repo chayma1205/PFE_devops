@@ -21,10 +21,12 @@
 | <a name="module_bastion_instance"></a> [bastion_instance](#module_bastion_instance) | terraform-aws-modules/ec2-instance/aws | 6.2.0 |
 | <a name="module_front_alb"></a> [front_alb](#module_front_alb) | terraform-aws-modules/alb/aws | 10.5.0 |
 | <a name="module_back_alb"></a> [back_alb](#module_back_alb) | terraform-aws-modules/alb/aws | 10.5.0 |
-| <a name="module_web_asg"></a> [web_asg](#module_web_asg) | terraform-aws-modules/autoscaling/aws | n/a |
 | <a name="module_ecs"></a> [ecs](#module_ecs) | terraform-aws-modules/ecs/aws | n/a |
 | <a name="module_db_rds"></a> [db_rds](#module_db_rds) | terraform-aws-modules/rds/aws | 7.1.0 |
 | <a name="module_db_rds_sg"></a> [db_rds_sg](#module_db_rds_sg) | terraform-aws-modules/security-group/aws | 5.3.1 |
+| <a name="module_iam_bastion"></a> [iam_bastion](#module_iam_bastion) | terraform-aws-modules/iam/aws//modules/iam-role | 6.4.0 |
+| <a name="module_iam_ecs_task_role"></a> [iam_ecs_task_role](#module_iam_ecs_task_role) | terraform-aws-modules/iam/aws//modules/iam-role | 6.4.0 |
+| <a name="module_iam_ecs_task_exec_role"></a> [iam_ecs_task_exec_role](#module_iam_ecs_task_exec_role) | terraform-aws-modules/iam/aws//modules/iam-role | 6.4.0 |
 
 ## Resources
 
@@ -34,6 +36,14 @@
 | [aws_iam_role_policy_attachment.ecs_task_execution_role_policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [aws_key_pair.bastion_key](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/key_pair) | resource |
 | [aws_security_group.ecs_instance_sg](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group) | resource |
+
+## Modules Used
+
+| Name | Description |
+|------|-------------|
+| [iam_bastion](#module_iam_bastion) | IAM role for bastion instance with Secrets Manager access |
+| [iam_ecs_task_role](#module_iam_ecs_task_role) | IAM role for ECS tasks to access secrets |
+| [iam_ecs_task_exec_role](#module_iam_ecs_task_exec_role) | IAM role for ECS task execution |
 
 ## Files
 
@@ -74,25 +84,12 @@
 | <a name="input_pub_key_name"></a> [pub_key_name](#input_pub_key_name) | The name of public SSH key to copy to your bastion instance and private EC2 instances and allow SSH access to them with your private key | `string` | n/a | yes |
 | <a name="input_prv_key_name"></a> [prv_key_name](#input_prv_key_name) | The name of private SSH key to copy to your bastion instance so it can SSH into the private EC2 instances | `string` | n/a | yes |
 | <a name="input_bastion_storage_size"></a> [bastion_storage_size](#input_bastion_storage_size) | The storage to allocate in GB for the bastion instance | `number` | `30` | no |
-| <a name="input_bastion_allowed_db_port"></a> [bastion_allowed_db_port](#input_bastion_allowed_db_port) | The port of database service hosted in the bastion instance | `number` | n/a | yes |
 
 ##### Application Load Balancer Configuration
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_ecs_frontend_tasks_port"></a> [ecs_frontend_tasks_port](#input_ecs_frontend_tasks_port) | The port of ECS frontend tasks | `number` | n/a | yes |
 | <a name="input_ecs_backend_tasks_port"></a> [ecs_backend_tasks_port](#input_ecs_backend_tasks_port) | The port of ECS backend tasks | `number` | n/a | yes |
-
-##### Auto Scaling Group Configuration
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_asg_name"></a> [asg_name](#input_asg_name) | ASG name | `string` | n/a | yes |
-| <a name="input_asg_min_size"></a> [asg_min_size](#input_asg_min_size) | Minimum instances | `number` | n/a | yes |
-| <a name="input_asg_max_size"></a> [asg_max_size](#input_asg_max_size) | Maximum instances | `number` | n/a | yes |
-| <a name="input_asg_desired_capacity"></a> [asg_desired_capacity](#input_asg_desired_capacity) | Desired instances | `number` | n/a | yes |
-| <a name="input_asg_launch_template_name"></a> [asg_launch_template_name](#input_asg_launch_template_name) | Name of the launch template | `string` | n/a | yes |
-| <a name="input_asg_launch_template_description"></a> [asg_launch_template_description](#input_asg_launch_template_description) | Description for the launch template | `string` | n/a | yes |
-| <a name="input_asg_image_id"></a> [asg_image_id](#input_asg_image_id) | AMI ID to use for the instances | `string` | n/a | yes |
-| <a name="input_asg_instance_type"></a> [asg_instance_type](#input_asg_instance_type) | EC2 instance type | `string` | n/a | yes |
 
 ##### ECS Configuration
 | Name | Description | Type | Default | Required |
@@ -105,10 +102,6 @@
 | <a name="input_backend_task_definition_cpu"></a> [backend_task_definition_cpu](#input_backend_task_definition_cpu) | The vCPU to reserve for the backend task definition | `number` | n/a | yes |
 | <a name="input_backend_task_definition_memory"></a> [backend_task_definition_memory](#input_backend_task_definition_memory) | The memory to reserve for the backend task definition | `number` | n/a | yes |
 | <a name="input_backend_service_desired_tasks"></a> [backend_service_desired_tasks](#input_backend_service_desired_tasks) | The desired tasks number for backend tasks | `number` | n/a | yes |
-| <a name="input_backend_task_db_user"></a> [backend_task_db_user](#input_backend_task_db_user) | Database username for the backend application | `string` | n/a | yes |
-| <a name="input_backend_task_db_password"></a> [backend_task_db_password](#input_backend_task_db_password) | Database password for the backend application | `string` | n/a | yes |
-| <a name="input_backend_task_db_port"></a> [backend_task_db_port](#input_backend_task_db_port) | Database port number | `number` | n/a | yes |
-| <a name="input_backend_task_db_name"></a> [backend_task_db_name](#input_backend_task_db_name) | Database name for the backend application | `string` | n/a | yes |
 
 
 ##### RDS Configuration
@@ -124,7 +117,6 @@
 | <a name="input_rds_db_allocated_storage"></a> [rds_db_allocated_storage](#input_rds_db_allocated_storage) | The allocated storage in gigabytes, must be >= 20 | `number` | `20` | no |
 | <a name="input_rds_db_max_allocated_storage"></a> [rds_db_max_allocated_storage](#input_rds_db_max_allocated_storage) | Specifies the value for Storage Autoscaling | `number` | `100` | no |
 | <a name="input_rds_multi_az"></a> [rds_multi_az](#input_rds_multi_az) | Specifies if the RDS instance is multi-AZ | `bool` | `false` | no |
-| <a name="input_rds_subnet_group_name"></a> [rds_subnet_group_name](#input_rds_subnet_group_name) | Name of DB subnet group. DB instance will be created in the VPC associated with the DB subnet group. If unspecified, will be created in the default VPC | `string` | `"my-subnet-group"` | no |
 
 ## Outputs
 
@@ -139,15 +131,18 @@
 | Name | Description |
 |------|-------------|
 | <a name="output_bastion_public_ip"></a> [bastion_public_ip](#output_bastion_public_ip) | The public IP of bastion instance |
+| <a name="output_bastion_instance_id"></a> [bastion_instance_id](#output_bastion_instance_id) | The instance ID of bastion instance |
+| <a name="output_bastion_security_group_id"></a> [bastion_security_group_id](#output_bastion_security_group_id) | The security group ID of bastion instance |
+| <a name="output_bastion_key_pair_name"></a> [bastion_key_pair_name](#output_bastion_key_pair_name) | The key pair name used for bastion instance |
 
 ##### Auto Scaling Group Outputs
 | Name | Description |
 |------|-------------|
-| <a name="output_asg_name"></a> [asg_name](#output_asg_name) | Autoscaling group name |
-| <a name="output_asg_arn"></a> [asg_arn](#output_asg_arn) | Autoscaling group ARN |
-| <a name="output_asg_id"></a> [asg_id](#output_asg_id) | Autoscaling group ID |
-| <a name="output_launch_template_id"></a> [launch_template_id](#output_launch_template_id) | Launch template ID used by the autoscaling group |
-| <a name="output_launch_template_latest_version"></a> [launch_template_latest_version](#output_launch_template_latest_version) | Latest launch template version |
+| <a name="output_asg_name"></a> [asg_name](#output_asg_name) | Autoscaling group name **(Note: ASG module is defined but not currently used)** |
+| <a name="output_asg_arn"></a> [asg_arn](#output_asg_arn) | Autoscaling group ARN **(Note: ASG module is defined but not currently used)** |
+| <a name="output_asg_id"></a> [asg_id](#output_asg_id) | Autoscaling group ID **(Note: ASG module is defined but not currently used)** |
+| <a name="output_launch_template_id"></a> [launch_template_id](#output_launch_template_id) | Launch template ID used by the autoscaling group **(Note: ASG module is defined but not currently used)** |
+| <a name="output_launch_template_latest_version"></a> [launch_template_latest_version](#output_launch_template_latest_version) | Latest launch template version **(Note: ASG module is defined but not currently used)** |
 
 ##### Application Load Balancer Outputs
 | Name | Description |
@@ -170,3 +165,4 @@
 | <a name="output_rds_database_name"></a> [rds_database_name](#output_rds_database_name) | Name of the database |
 | <a name="output_rds_username"></a> [rds_username](#output_rds_username) | Master username for the database (sensitive) |
 | <a name="output_rds_instance_id"></a> [rds_instance_id](#output_rds_instance_id) | RDS instance ID |
+| <a name="output_rds_secret_arn"></a> [rds_secret_arn](#output_rds_secret_arn) | RDS secret ARN (from secrets manager) |
