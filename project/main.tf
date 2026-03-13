@@ -324,46 +324,32 @@ module "ecs" {
 
   cluster_name = var.cluster_name
 
-  capacity_providers = {
-    web_asg_cp = {
-      auto_scaling_group_provider = {
-        auto_scaling_group_arn         = module.web_asg.autoscaling_group_arn
-        managed_termination_protection = "DISABLED"
+  cluster_capacity_providers = ["FARGATE", "FARGATE_SPOT"]
 
-        managed_scaling = {
-          maximum_scaling_step_size = 2
-          minimum_scaling_step_size = 1
-          status                    = "ENABLED"
-          target_capacity           = 100
-        }
-      }
+  default_capacity_provider_strategy = {
+    FARGATE = {
+      weight = 1
+      base   = 1
     }
   }
 
   create_cloudwatch_log_group = false
-  cluster_capacity_providers  = ["web_asg_cp"]
-
-  default_capacity_provider_strategy = {
-    web_asg_cp = {
-      weight = 1
-      base   = 0
-    }
-  }
 
   services = {
-    # frontend task definition
     frontend-task-definition = {
-
-      # Task definition attributes
       cpu    = var.frontend_task_definition_cpu
       memory = var.frontend_task_definition_memory
 
-      task_exec_iam_role_arn      = module.iam_ecs_task_role.arn
-      create_task_exec_iam_role   = false
-      create_cloudwatch_log_group = false
+      task_exec_iam_role_arn    = module.iam_ecs_task_role.arn
+      create_task_exec_iam_role = false
 
-      requires_compatibilities = ["EC2"]
+      requires_compatibilities = ["FARGATE"]
       network_mode             = "awsvpc"
+
+      # remove asg configs
+      enable_autoscaling = false
+      autoscaling_min_capacity = null
+      autoscaling_max_capacity = null
 
       container_definitions = {
         frontend = {
@@ -377,34 +363,29 @@ module "ecs" {
             }
           ]
 
-          port_mappings = {
-            http = {
-              name          = "http"
+          portMappings = [
+            {
               containerPort = var.ecs_frontend_tasks_port
-              hostPort      = 0 # dynamic port
               protocol      = "tcp"
             }
-          }
+          ]
 
           enable_cloudwatch_logging   = false
           create_cloudwatch_log_group = false
         }
       }
 
-      # Service attributes
       desired_count = var.frontend_service_desired_tasks
       subnet_ids    = module.vpc.private_subnets
 
-      # Use the capacity provider instead of launch_type
       capacity_provider_strategy = {
-        web_asg_cp = {
-          capacity_provider = "web_asg_cp"
+        FARGATE = {
+          capacity_provider = "FARGATE"
           weight            = 1
           base              = 1
         }
       }
 
-      # alb config
       load_balancer = {
         service = {
           target_group_arn = module.front_alb.target_groups["ecs-frontend-tasks-tg"].arn
@@ -413,40 +394,40 @@ module "ecs" {
         }
       }
 
-      security_group_rules = {
+      security_group_ingress_rules = {
         ingress_http = {
-          type        = "ingress"
-          from_port   = var.ecs_frontend_tasks_port
-          to_port     = var.ecs_frontend_tasks_port
-          protocol    = "tcp"
-          cidr_blocks = [var.vpc_cidr]
-          description = "VPC-only HTTP access"
-        }
-
-        egress_http = {
-          type        = "egress"
-          from_port   = var.ecs_backend_tasks_port
-          to_port     = var.ecs_backend_tasks_port
-          protocol    = "tcp"
-          cidr_blocks = [var.vpc_cidr]
-          description = "VPC-only HTTP egress"
+          from_port                    = var.ecs_frontend_tasks_port
+          to_port                      = var.ecs_frontend_tasks_port
+          ip_protocol                  = "tcp"
+          referenced_security_group_id = module.front_alb.security_group_id
+          description                  = "ALB HTTP access"
         }
       }
+
+      security_group_egress_rules = {
+        egress_all = {
+          ip_protocol = "-1"
+          cidr_ipv4   = "0.0.0.0/0"
+        }
+      }
+
+      vpc_id = module.vpc.vpc_id
     }
 
-    # backend task definition
     backend-task-definition = {
-
-      # Task definition attributes
       cpu    = var.backend_task_definition_cpu
       memory = var.backend_task_definition_memory
 
-      task_exec_iam_role_arn      = module.iam_ecs_task_role.arn
-      create_task_exec_iam_role   = false
-      create_cloudwatch_log_group = false
+      task_exec_iam_role_arn    = module.iam_ecs_task_role.arn
+      create_task_exec_iam_role = false
 
-      requires_compatibilities = ["EC2"]
+      requires_compatibilities = ["FARGATE"]
       network_mode             = "awsvpc"
+
+      # remove asg configs
+      enable_autoscaling = false
+      autoscaling_min_capacity = null
+      autoscaling_max_capacity = null
 
       container_definitions = {
         backend = {
@@ -468,39 +449,40 @@ module "ecs" {
             }
           ]
 
-          secrets = {
-            DB_USER     = { name = "username", valueFrom = module.db_rds.db_instance_master_user_secret_arn }
-            DB_PASSWORD = { name = "password", valueFrom = module.db_rds.db_instance_master_user_secret_arn }
-          }
+          secrets = [
+            {
+              name      = "DB_USER"
+              valueFrom = "${module.db_rds.db_instance_master_user_secret_arn}:username::"
+            },
+            {
+              name      = "DB_PASSWORD"
+              valueFrom = "${module.db_rds.db_instance_master_user_secret_arn}:password::"
+            }
+          ]
 
-          port_mappings = {
-            http = {
-              name          = "http"
+          portMappings = [
+            {
               containerPort = var.ecs_backend_tasks_port
-              hostPort      = 0 # dynamic port
               protocol      = "tcp"
             }
-          }
+          ]
 
           enable_cloudwatch_logging   = false
           create_cloudwatch_log_group = false
         }
       }
 
-      # Service attributes
       desired_count = var.backend_service_desired_tasks
       subnet_ids    = module.vpc.private_subnets
 
-      # Use the capacity provider instead of launch_type
       capacity_provider_strategy = {
-        web_asg_cp = {
-          capacity_provider = "web_asg_cp"
+        FARGATE = {
+          capacity_provider = "FARGATE"
           weight            = 1
           base              = 1
         }
       }
 
-      # alb config
       load_balancer = {
         service = {
           target_group_arn = module.back_alb.target_groups["ecs-backend-tasks-tg"].arn
@@ -509,29 +491,31 @@ module "ecs" {
         }
       }
 
-      security_group_rules = {
+      security_group_ingress_rules = {
         ingress_http = {
-          type        = "ingress"
-          from_port   = var.ecs_backend_tasks_port
-          to_port     = var.ecs_backend_tasks_port
-          protocol    = "tcp"
-          cidr_blocks = [var.vpc_cidr]
-          description = "VPC-only HTTP access"
+          from_port                    = var.ecs_backend_tasks_port
+          to_port                      = var.ecs_backend_tasks_port
+          ip_protocol                  = "tcp"
+          referenced_security_group_id = module.back_alb.security_group_id
+          description                  = "ALB HTTP access"
         }
+      }
 
+      security_group_egress_rules = {
         egress_rds_db = {
-          type        = "egress"
-          protocol    = "tcp"
+          ip_protocol = "tcp"
           from_port   = var.rds_db_port
           to_port     = var.rds_db_port
-          cidr_blocks = [var.vpc_cidr]
+          cidr_ipv4   = "0.0.0.0/0"
           description = "Allow egress traffic to RDS db"
         }
       }
+
+      vpc_id = module.vpc.vpc_id
     }
   }
 
-  depends_on = [module.web_asg, module.vpc, module.front_alb, module.back_alb, module.bastion_instance]
+  depends_on = [module.vpc, module.front_alb, module.back_alb]
 }
 
 # DATABASE RDS
