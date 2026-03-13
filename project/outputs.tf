@@ -40,34 +40,6 @@ output "bastion_key_pair_name" {
   value       = aws_key_pair.bastion_key.key_name
 }
 
-#########
-# ASG
-#########
-
-output "asg_name" {
-  description = "Autoscaling group name"
-  value       = module.web_asg.autoscaling_group_name
-}
-
-output "asg_arn" {
-  description = "Autoscaling group ARN"
-  value       = module.web_asg.autoscaling_group_arn
-}
-
-output "asg_id" {
-  description = "Autoscaling group ID"
-  value       = module.web_asg.autoscaling_group_id
-}
-
-output "launch_template_id" {
-  description = "Launch template ID used by the autoscaling group"
-  value       = module.web_asg.launch_template_id
-}
-
-output "launch_template_latest_version" {
-  description = "Latest launch template version"
-  value       = module.web_asg.launch_template_latest_version
-}
 
 #########
 # ALB
@@ -87,15 +59,15 @@ output "back_alb_dns" {
 # ECS
 #########
 
-output "ecs_cluster_name" {
-  description = "ECS cluster name"
-  value       = module.ecs.cluster_name
-}
+# output "ecs_cluster_name" {
+#   description = "ECS cluster name"
+#   value       = module.ecs.cluster_name
+# }
 
-output "ecs_cluster_arn" {
-  description = "ECS cluster ARN"
-  value       = module.ecs.cluster_arn
-}
+# output "ecs_cluster_arn" {
+#   description = "ECS cluster ARN"
+#   value       = module.ecs.cluster_arn
+# }
 
 
 #########
