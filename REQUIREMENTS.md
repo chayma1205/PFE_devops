@@ -135,15 +135,6 @@
 | <a name="output_bastion_security_group_id"></a> [bastion_security_group_id](#output_bastion_security_group_id) | The security group ID of bastion instance |
 | <a name="output_bastion_key_pair_name"></a> [bastion_key_pair_name](#output_bastion_key_pair_name) | The key pair name used for bastion instance |
 
-##### Auto Scaling Group Outputs
-| Name | Description |
-|------|-------------|
-| <a name="output_asg_name"></a> [asg_name](#output_asg_name) | Autoscaling group name **(Note: ASG module is defined but not currently used)** |
-| <a name="output_asg_arn"></a> [asg_arn](#output_asg_arn) | Autoscaling group ARN **(Note: ASG module is defined but not currently used)** |
-| <a name="output_asg_id"></a> [asg_id](#output_asg_id) | Autoscaling group ID **(Note: ASG module is defined but not currently used)** |
-| <a name="output_launch_template_id"></a> [launch_template_id](#output_launch_template_id) | Launch template ID used by the autoscaling group **(Note: ASG module is defined but not currently used)** |
-| <a name="output_launch_template_latest_version"></a> [launch_template_latest_version](#output_launch_template_latest_version) | Latest launch template version **(Note: ASG module is defined but not currently used)** |
-
 ##### Application Load Balancer Outputs
 | Name | Description |
 |------|-------------|
