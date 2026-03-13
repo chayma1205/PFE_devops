@@ -295,7 +295,11 @@ module "ecs" {
   create_cloudwatch_log_group = false
 
   services = {
-    frontend-task-definition = {
+    frontend = {
+
+      name   = "frontend-service"
+      family = "frontend-task-definition"
+
       cpu    = var.frontend_task_definition_cpu
       memory = var.frontend_task_definition_memory
 
@@ -369,7 +373,11 @@ module "ecs" {
       vpc_id = module.vpc.vpc_id
     }
 
-    backend-task-definition = {
+    backend = {
+
+      name   = "backend-service"
+      family = "backend-task-definition"
+
       cpu    = var.backend_task_definition_cpu
       memory = var.backend_task_definition_memory
 
