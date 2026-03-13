@@ -521,12 +521,9 @@ module "ecs" {
       }
 
       security_group_egress_rules = {
-        egress_rds_db = {
-          ip_protocol = "tcp"
-          from_port   = var.rds_db_port
-          to_port     = var.rds_db_port
+        egress_all = {
+          ip_protocol = "-1"
           cidr_ipv4   = "0.0.0.0/0"
-          description = "Allow egress traffic to RDS db"
         }
       }
 
