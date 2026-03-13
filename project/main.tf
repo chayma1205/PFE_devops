@@ -302,33 +302,6 @@ module "iam_bastion" {
   }
 }
 
-module "iam_ecs_task_role" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role"
-  version = "6.4.0"
-
-  name                    = "${var.vpc_name}-ecs-task-role"
-  use_name_prefix         = false
-  create_instance_profile = false
-
-  description = "This role is for ECS tasks, using this custom role in order to avoid creating a new role for each task definition by the ecs module"
-
-  trust_policy_permissions = {
-    TrustRoleAndServiceToAssume = {
-      actions = ["sts:AssumeRole"]
-      principals = [
-        {
-          type        = "Service"
-          identifiers = ["ecs-tasks.amazonaws.com"]
-        }
-      ]
-    }
-  }
-
-  policies = {
-    AWSSecretsManagerClientReadOnlyAccess = "arn:aws:iam::aws:policy/AWSSecretsManagerClientReadOnlyAccess"
-  }
-}
-
 module "iam_ecs_task_exec_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role"
   version = "6.4.0"
@@ -352,7 +325,8 @@ module "iam_ecs_task_exec_role" {
   }
 
   policies = {
-    AmazonECSTaskExecutionRolePolicy = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+    AWSSecretsManagerClientReadOnlyAccess = "arn:aws:iam::aws:policy/AWSSecretsManagerClientReadOnlyAccess" // the ecs agent needs to fetch secrets from secrets manager service
+    AmazonECSTaskExecutionRolePolicy      = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
   }
 }
 
@@ -374,10 +348,6 @@ module "ecs" {
       # ECS task execution role
       task_exec_iam_role_arn    = module.iam_ecs_task_exec_role.arn
       create_task_exec_iam_role = false
-
-      # ECS task role
-      tasks_iam_role_arn    = module.iam_ecs_task_role.arn
-      create_tasks_iam_role = false
 
       # remove asg configs
       enable_autoscaling       = false
@@ -443,13 +413,13 @@ module "ecs" {
       cpu    = var.backend_task_definition_cpu
       memory = var.backend_task_definition_memory
 
+      desired_count    = var.backend_service_desired_tasks
+      subnet_ids       = module.vpc.private_subnets
+      assign_public_ip = false
+
       # ECS task execution role
       task_exec_iam_role_arn    = module.iam_ecs_task_exec_role.arn
       create_task_exec_iam_role = false
-
-      # ECS task role
-      tasks_iam_role_arn    = module.iam_ecs_task_role.arn
-      create_tasks_iam_role = false
 
       # remove asg configs
       enable_autoscaling       = false
@@ -498,9 +468,6 @@ module "ecs" {
           create_cloudwatch_log_group = false
         }
       }
-
-      desired_count = var.backend_service_desired_tasks
-      subnet_ids    = module.vpc.private_subnets
 
       load_balancer = {
         service = {
