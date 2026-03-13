@@ -276,49 +276,7 @@ resource "aws_security_group" "ecs_instance_sg" {
   }
 }
 
-# Auto Scaling Group
-module "web_asg" {
-  source = "terraform-aws-modules/autoscaling/aws"
-
-  name             = var.asg_name
-  use_name_prefix  = false
-  min_size         = var.asg_min_size
-  max_size         = var.asg_max_size
-  desired_capacity = var.asg_desired_capacity
-
-  vpc_zone_identifier = module.vpc.private_subnets
-
-  # launch template config
-  launch_template_name        = var.asg_launch_template_name
-  launch_template_description = var.asg_launch_template_description
-  image_id                    = var.asg_image_id
-  instance_type               = var.asg_instance_type
-  enable_monitoring           = false
-  security_groups             = [aws_security_group.ecs_instance_sg.id]
-  key_name                    = aws_key_pair.bastion_key.key_name
-
-  user_data = base64encode(<<-EOF
-    #!/bin/bash
-    echo "ECS_CLUSTER=${var.cluster_name}" >> /etc/ecs/ecs.config
-    EOF
-  )
-
-  create_iam_instance_profile = true
-  iam_role_name               = "${var.vpc_name}-ecsExecutionRole"
-  iam_role_description        = "this role is needed for ecs"
-  iam_role_policies = {
-    ecs = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
-  }
-
-  tags = {
-    Name    = "${var.vpc_name}-${var.asg_name}"
-    Purpose = "Deploy and scale simple web app - front and back"
-  }
-
-  depends_on = [module.vpc, aws_key_pair.bastion_key]
-}
-
-# # ECS Cluster and Service
+# ECS Cluster and Service
 module "ecs" {
   source = "terraform-aws-modules/ecs/aws"
 
