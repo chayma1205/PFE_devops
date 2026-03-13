@@ -340,8 +340,13 @@ module "ecs" {
       cpu    = var.frontend_task_definition_cpu
       memory = var.frontend_task_definition_memory
 
-      task_exec_iam_role_arn    = module.iam_ecs_task_role.arn
+      # ECS task execution role
+      task_exec_iam_role_arn    = module.iam_ecs_task_exec_role.arn
       create_task_exec_iam_role = false
+
+      # ECS task role
+      tasks_iam_role_arn    = module.iam_ecs_task_role.arn
+      create_tasks_iam_role = false
 
       requires_compatibilities = ["FARGATE"]
       network_mode             = "awsvpc"
@@ -418,8 +423,13 @@ module "ecs" {
       cpu    = var.backend_task_definition_cpu
       memory = var.backend_task_definition_memory
 
-      task_exec_iam_role_arn    = module.iam_ecs_task_role.arn
+      # ECS task execution role
+      task_exec_iam_role_arn    = module.iam_ecs_task_exec_role.arn
       create_task_exec_iam_role = false
+
+      # ECS task role
+      tasks_iam_role_arn    = module.iam_ecs_task_role.arn
+      create_tasks_iam_role = false
 
       requires_compatibilities = ["FARGATE"]
       network_mode             = "awsvpc"
