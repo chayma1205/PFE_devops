@@ -292,7 +292,8 @@ module "ecs" {
 
   cluster_capacity_providers = ["FARGATE", "FARGATE_SPOT"]
 
-  create_cloudwatch_log_group = false
+  create_cloudwatch_log_group            = true
+  cloudwatch_log_group_retention_in_days = 0
 
   services = {
     frontend = {
@@ -337,8 +338,9 @@ module "ecs" {
             }
           ]
 
-          enable_cloudwatch_logging   = false
-          create_cloudwatch_log_group = false
+          enable_cloudwatch_logging              = true
+          create_cloudwatch_log_group            = true
+          cloudwatch_log_group_retention_in_days = 0
         }
       }
 
@@ -432,8 +434,9 @@ module "ecs" {
             }
           ]
 
-          enable_cloudwatch_logging   = false
-          create_cloudwatch_log_group = false
+          enable_cloudwatch_logging              = true
+          create_cloudwatch_log_group            = true
+          cloudwatch_log_group_retention_in_days = 0
         }
       }
 
