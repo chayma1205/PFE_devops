@@ -364,13 +364,6 @@ module "ecs" {
 
   cluster_capacity_providers = ["FARGATE", "FARGATE_SPOT"]
 
-  default_capacity_provider_strategy = {
-    FARGATE = {
-      weight = 1
-      base   = 1
-    }
-  }
-
   create_cloudwatch_log_group = false
 
   services = {
@@ -385,9 +378,6 @@ module "ecs" {
       # ECS task role
       tasks_iam_role_arn    = module.iam_ecs_task_role.arn
       create_tasks_iam_role = false
-
-      requires_compatibilities = ["FARGATE"]
-      network_mode             = "awsvpc"
 
       # remove asg configs
       enable_autoscaling       = false
@@ -420,14 +410,6 @@ module "ecs" {
 
       desired_count = var.frontend_service_desired_tasks
       subnet_ids    = module.vpc.private_subnets
-
-      capacity_provider_strategy = {
-        FARGATE = {
-          capacity_provider = "FARGATE"
-          weight            = 1
-          base              = 1
-        }
-      }
 
       load_balancer = {
         service = {
@@ -468,9 +450,6 @@ module "ecs" {
       # ECS task role
       tasks_iam_role_arn    = module.iam_ecs_task_role.arn
       create_tasks_iam_role = false
-
-      requires_compatibilities = ["FARGATE"]
-      network_mode             = "awsvpc"
 
       # remove asg configs
       enable_autoscaling       = false
@@ -522,14 +501,6 @@ module "ecs" {
 
       desired_count = var.backend_service_desired_tasks
       subnet_ids    = module.vpc.private_subnets
-
-      capacity_provider_strategy = {
-        FARGATE = {
-          capacity_provider = "FARGATE"
-          weight            = 1
-          base              = 1
-        }
-      }
 
       load_balancer = {
         service = {
