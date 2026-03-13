@@ -148,8 +148,7 @@ module "front_alb" {
   security_group_egress_rules = {
     all_traffic = {
       ip_protocol = "-1"
-      cidr_ipv4   = var.vpc_cidr
-      description = "allow outbound traffic only inside the vpc"
+      cidr_ipv4   = "0.0.0.0/0"
     }
   }
 
@@ -203,8 +202,7 @@ module "back_alb" {
   security_group_egress_rules = {
     all_traffic = {
       ip_protocol = "-1"
-      cidr_ipv4   = var.vpc_cidr
-      description = "allow outbound traffic only inside the vpc"
+      cidr_ipv4   = "0.0.0.0/0"
     }
   }
 
@@ -230,50 +228,6 @@ module "back_alb" {
   }
 
   depends_on = [module.vpc, module.front_alb]
-}
-
-resource "aws_security_group" "ecs_instance_sg" {
-  description = "Security group for ECS EC2 instances"
-  vpc_id      = module.vpc.vpc_id
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "allow any outbound traffic"
-  }
-
-  ingress {
-    from_port       = var.ecs_frontend_tasks_port
-    to_port         = var.ecs_frontend_tasks_port
-    protocol        = "tcp"
-    security_groups = [module.front_alb.security_group_id]
-    description     = "allow inbound traffic to frontend ecs tasks"
-  }
-
-  ingress {
-    from_port       = var.ecs_backend_tasks_port
-    to_port         = var.ecs_backend_tasks_port
-    protocol        = "tcp"
-    security_groups = [module.back_alb.security_group_id]
-    description     = "allow inbound traffic to backend ecs tasks"
-  }
-
-  ingress {
-    from_port       = 22
-    to_port         = 22
-    protocol        = "tcp"
-    security_groups = [module.bastion_instance.security_group_id]
-    description     = "SSH from Bastion"
-  }
-
-  tags = {
-    Name = "${var.vpc_name}-ecs-instance-sg"
-  }
-  lifecycle {
-    create_before_destroy = true
-  }
 }
 
 module "iam_bastion" {
