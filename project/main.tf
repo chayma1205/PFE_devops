@@ -284,6 +284,146 @@ module "iam_ecs_task_exec_role" {
   }
 }
 
+# Frontend Task Definition
+resource "aws_ecs_task_definition" "frontend" {
+  family                   = "frontend-task-definition"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = var.frontend_task_definition_cpu
+  memory                   = var.frontend_task_definition_memory
+  execution_role_arn       = module.iam_ecs_task_exec_role.arn
+
+  container_definitions = jsonencode([
+    {
+      name      = "frontend"
+      image     = "maissendev/todo-frontend"
+      essential = true
+
+      readonlyRootFilesystem = false
+
+      environment = [
+        {
+          name  = "API_URL"
+          value = var.frontend_task_api_url == "" ? "http://${module.back_alb.dns_name}" : var.frontend_task_api_url
+        }
+      ]
+
+      portMappings = [
+        {
+          containerPort = var.ecs_frontend_tasks_port
+          protocol      = "tcp"
+        }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/frontend-task-definition"
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "ecs"
+        }
+      }
+    }
+  ])
+
+  lifecycle {
+    ignore_changes = [container_definitions] # Ignored because the CD pipeline will update each time the container image
+  }
+
+  tags = {
+    Name = "frontend-task-definition"
+  }
+}
+
+# Frontend CloudWatch Log Group
+resource "aws_cloudwatch_log_group" "frontend" {
+  name              = "/ecs/frontend-task-definition"
+  retention_in_days = 0
+
+  tags = {
+    Name = "frontend-task-definition"
+  }
+}
+
+# Backend Task Definition
+resource "aws_ecs_task_definition" "backend" {
+  family                   = "backend-task-definition"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = var.backend_task_definition_cpu
+  memory                   = var.backend_task_definition_memory
+  execution_role_arn       = module.iam_ecs_task_exec_role.arn
+
+  container_definitions = jsonencode([
+    {
+      name      = "backend"
+      image     = "maissendev/todo-backend"
+      essential = true
+
+      environment = [
+        {
+          name  = "DB_PORT"
+          value = tostring(module.db_rds.db_instance_port)
+        },
+        {
+          name  = "DB_NAME"
+          value = module.db_rds.db_instance_name
+        },
+        {
+          name  = "DB_HOST"
+          value = module.db_rds.db_instance_address
+        }
+      ]
+
+      secrets = [
+        {
+          name      = "DB_USER"
+          valueFrom = "${module.db_rds.db_instance_master_user_secret_arn}:username::"
+        },
+        {
+          name      = "DB_PASSWORD"
+          valueFrom = "${module.db_rds.db_instance_master_user_secret_arn}:password::"
+        }
+      ]
+
+      portMappings = [
+        {
+          containerPort = var.ecs_backend_tasks_port
+          protocol      = "tcp"
+        }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/backend-task-definition"
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "ecs"
+        }
+      }
+    }
+  ])
+
+  lifecycle {
+    ignore_changes = [container_definitions] # Ignored because the CD pipeline will update each time the container image
+  }
+
+  tags = {
+    Name = "backend-task-definition"
+  }
+}
+
+# Backend CloudWatch Log Group
+resource "aws_cloudwatch_log_group" "backend" {
+  name              = "/ecs/backend-task-definition"
+  retention_in_days = 0
+
+  tags = {
+    Name = "backend-task-definition"
+  }
+}
+
+
 # ECS Cluster and Service
 module "ecs" {
   source = "terraform-aws-modules/ecs/aws"
@@ -300,13 +440,14 @@ module "ecs" {
 
       name   = "frontend-service"
       family = "frontend-task-definition"
-
-      cpu    = var.frontend_task_definition_cpu
-      memory = var.frontend_task_definition_memory
+      
+      create_task_definition = false
+      task_definition_arn    = aws_ecs_task_definition.frontend.arn
 
       # ECS task execution role
       task_exec_iam_role_arn    = module.iam_ecs_task_exec_role.arn
       create_task_exec_iam_role = false
+      container_definitions = {} # using a custom one
 
       # ECS task role
       create_tasks_iam_role = false
@@ -315,34 +456,6 @@ module "ecs" {
       enable_autoscaling       = false
       autoscaling_min_capacity = null
       autoscaling_max_capacity = null
-
-      container_definitions = {
-        frontend = {
-          essential = true
-          image     = "maissendev/todo-frontend"
-
-          # without this, the frontend container will keep crashing
-          readonlyRootFilesystem = false
-
-          environment = [
-            {
-              name  = "API_URL"
-              value = var.frontend_task_api_url == "" ? "http://${module.back_alb.dns_name}" : var.frontend_task_api_url
-            }
-          ]
-
-          portMappings = [
-            {
-              containerPort = var.ecs_frontend_tasks_port
-              protocol      = "tcp"
-            }
-          ]
-
-          enable_cloudwatch_logging              = true
-          create_cloudwatch_log_group            = true
-          cloudwatch_log_group_retention_in_days = 0
-        }
-      }
 
       desired_count = var.frontend_service_desired_tasks
       subnet_ids    = module.vpc.private_subnets
@@ -380,8 +493,9 @@ module "ecs" {
       name   = "backend-service"
       family = "backend-task-definition"
 
-      cpu    = var.backend_task_definition_cpu
-      memory = var.backend_task_definition_memory
+      create_task_definition = false
+      task_definition_arn    = aws_ecs_task_definition.backend.arn
+      container_definitions = {} # using a custom one
 
       desired_count    = var.backend_service_desired_tasks
       subnet_ids       = module.vpc.private_subnets
@@ -395,50 +509,6 @@ module "ecs" {
       enable_autoscaling       = false
       autoscaling_min_capacity = null
       autoscaling_max_capacity = null
-
-      container_definitions = {
-        backend = {
-          essential = true
-          image     = "maissendev/todo-backend"
-
-          environment = [
-            {
-              name  = "DB_PORT"
-              value = tostring(module.db_rds.db_instance_port)
-            },
-            {
-              name  = "DB_NAME"
-              value = module.db_rds.db_instance_name
-            },
-            {
-              name  = "DB_HOST"
-              value = module.db_rds.db_instance_address
-            }
-          ]
-
-          secrets = [
-            {
-              name      = "DB_USER"
-              valueFrom = "${module.db_rds.db_instance_master_user_secret_arn}:username::"
-            },
-            {
-              name      = "DB_PASSWORD"
-              valueFrom = "${module.db_rds.db_instance_master_user_secret_arn}:password::"
-            }
-          ]
-
-          portMappings = [
-            {
-              containerPort = var.ecs_backend_tasks_port
-              protocol      = "tcp"
-            }
-          ]
-
-          enable_cloudwatch_logging              = true
-          create_cloudwatch_log_group            = true
-          cloudwatch_log_group_retention_in_days = 0
-        }
-      }
 
       load_balancer = {
         service = {
@@ -469,7 +539,15 @@ module "ecs" {
     }
   }
 
-  depends_on = [module.vpc, module.front_alb, module.back_alb]
+  depends_on = [
+    module.vpc,
+    module.front_alb,
+    module.back_alb,
+    aws_ecs_task_definition.frontend,
+    aws_ecs_task_definition.backend,
+    aws_cloudwatch_log_group.frontend,
+    aws_cloudwatch_log_group.backend
+  ]
 }
 
 # DATABASE RDS
