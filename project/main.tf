@@ -443,6 +443,7 @@ module "ecs" {
       
       create_task_definition = false
       task_definition_arn    = aws_ecs_task_definition.frontend.arn
+      ignore_task_definition_changes = true
 
       # ECS task execution role
       task_exec_iam_role_arn    = module.iam_ecs_task_exec_role.arn
@@ -494,6 +495,7 @@ module "ecs" {
       family = "backend-task-definition"
 
       create_task_definition = false
+      ignore_task_definition_changes = true
       task_definition_arn    = aws_ecs_task_definition.backend.arn
       container_definitions = {} # using a custom one
 
