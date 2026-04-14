@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "tf_state" {
-  bucket = "pfe-terraform-state-bucket"
+  bucket = "pfe--terraform-state-bucket"
 
   lifecycle {
     prevent_destroy = true
