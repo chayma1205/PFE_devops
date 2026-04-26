@@ -121,7 +121,10 @@ module "bastion_instance" {
   depends_on = [aws_key_pair.bastion_key]
 }
 
+#########
 # ALB
+#########
+
 module "front_alb" {
   source  = "terraform-aws-modules/alb/aws"
   version = "10.5.0"
@@ -230,6 +233,10 @@ module "back_alb" {
   depends_on = [module.vpc, module.front_alb]
 }
 
+#########
+# IAM
+#########
+
 module "iam_bastion" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role"
   version = "6.4.0"
@@ -284,7 +291,10 @@ module "iam_ecs_task_exec_role" {
   }
 }
 
-# Frontend Task Definition
+#########
+# ECS Task Definitions
+#########
+
 resource "aws_ecs_task_definition" "frontend" {
   family                   = "frontend-task-definition"
   network_mode             = "awsvpc"
@@ -335,7 +345,6 @@ resource "aws_ecs_task_definition" "frontend" {
   }
 }
 
-# Frontend CloudWatch Log Group
 resource "aws_cloudwatch_log_group" "frontend" {
   name              = "/ecs/frontend-task-definition"
   retention_in_days = 0
@@ -345,7 +354,6 @@ resource "aws_cloudwatch_log_group" "frontend" {
   }
 }
 
-# Backend Task Definition
 resource "aws_ecs_task_definition" "backend" {
   family                   = "backend-task-definition"
   network_mode             = "awsvpc"
@@ -413,7 +421,6 @@ resource "aws_ecs_task_definition" "backend" {
   }
 }
 
-# Backend CloudWatch Log Group
 resource "aws_cloudwatch_log_group" "backend" {
   name              = "/ecs/backend-task-definition"
   retention_in_days = 0
@@ -423,8 +430,10 @@ resource "aws_cloudwatch_log_group" "backend" {
   }
 }
 
+#########
+# ECS Cluster & Services
+#########
 
-# ECS Cluster and Service
 module "ecs" {
   source = "terraform-aws-modules/ecs/aws"
 
@@ -440,15 +449,15 @@ module "ecs" {
 
       name   = "frontend-service"
       family = "frontend-task-definition"
-      
-      create_task_definition = false
-      task_definition_arn    = aws_ecs_task_definition.frontend.arn
+
+      create_task_definition         = false
+      task_definition_arn            = aws_ecs_task_definition.frontend.arn
       ignore_task_definition_changes = true
 
       # ECS task execution role
       task_exec_iam_role_arn    = module.iam_ecs_task_exec_role.arn
       create_task_exec_iam_role = false
-      container_definitions = {} # using a custom one
+      container_definitions     = {} # using a custom one
 
       # ECS task role
       create_tasks_iam_role = false
@@ -494,10 +503,10 @@ module "ecs" {
       name   = "backend-service"
       family = "backend-task-definition"
 
-      create_task_definition = false
+      create_task_definition         = false
       ignore_task_definition_changes = true
-      task_definition_arn    = aws_ecs_task_definition.backend.arn
-      container_definitions = {} # using a custom one
+      task_definition_arn            = aws_ecs_task_definition.backend.arn
+      container_definitions          = {} # using a custom one
 
       desired_count    = var.backend_service_desired_tasks
       subnet_ids       = module.vpc.private_subnets
@@ -552,7 +561,10 @@ module "ecs" {
   ]
 }
 
-# DATABASE RDS
+#########
+# RDS
+#########
+
 module "db_rds" {
   source  = "terraform-aws-modules/rds/aws"
   version = "7.1.0"
@@ -589,7 +601,7 @@ module "db_rds" {
   depends_on = [module.vpc]
 }
 
-module "db_rds_sg" { # creating security groups for RDS
+module "db_rds_sg" {
   source  = "terraform-aws-modules/security-group/aws"
   version = "5.3.1"
 
@@ -615,5 +627,204 @@ module "db_rds_sg" { # creating security groups for RDS
       cidr_blocks = "0.0.0.0/0"
       description = "Allow all outbound"
     }
+  ]
+}
+
+#########
+# CloudWatch Dashboard
+#########
+
+resource "aws_cloudwatch_dashboard" "main" {
+  dashboard_name = "${var.vpc_name}-dashboard"
+
+  dashboard_body = jsonencode({
+    widgets = [
+
+      # ECS Frontend CPU
+      {
+        type   = "metric"
+        x      = 0
+        y      = 0
+        width  = 8
+        height = 6
+        properties = {
+          title  = "ECS Frontend - CPU Utilization (%)"
+          view   = "timeSeries"
+          region = var.aws_region
+          metrics = [
+            ["AWS/ECS", "CPUUtilization",
+              "ClusterName", var.cluster_name,
+              "ServiceName", "frontend-service",
+              { stat = "Average", period = 300 }
+            ]
+          ]
+          yAxis = { left = { min = 0, max = 100 } }
+        }
+      },
+
+      # ECS Backend CPU
+      {
+        type   = "metric"
+        x      = 8
+        y      = 0
+        width  = 8
+        height = 6
+        properties = {
+          title  = "ECS Backend - CPU Utilization (%)"
+          view   = "timeSeries"
+          region = var.aws_region
+          metrics = [
+            ["AWS/ECS", "CPUUtilization",
+              "ClusterName", var.cluster_name,
+              "ServiceName", "backend-service",
+              { stat = "Average", period = 300 }
+            ]
+          ]
+          yAxis = { left = { min = 0, max = 100 } }
+        }
+      },
+
+      # ECS Backend Memory
+      {
+        type   = "metric"
+        x      = 16
+        y      = 0
+        width  = 8
+        height = 6
+        properties = {
+          title  = "ECS Backend - Memory Utilization (%)"
+          view   = "timeSeries"
+          region = var.aws_region
+          metrics = [
+            ["AWS/ECS", "MemoryUtilization",
+              "ClusterName", var.cluster_name,
+              "ServiceName", "backend-service",
+              { stat = "Average", period = 300 }
+            ]
+          ]
+          yAxis = { left = { min = 0, max = 100 } }
+        }
+      },
+
+      # ALB Request Count
+      {
+        type   = "metric"
+        x      = 0
+        y      = 6
+        width  = 12
+        height = 6
+        properties = {
+          title  = "ALB - Request Count"
+          view   = "timeSeries"
+          region = var.aws_region
+          metrics = [
+            ["AWS/ApplicationELB", "RequestCount",
+              "LoadBalancer", module.front_alb.arn_suffix,
+              { stat = "Sum", period = 60, label = "Frontend ALB" }
+            ],
+            ["AWS/ApplicationELB", "RequestCount",
+              "LoadBalancer", module.back_alb.arn_suffix,
+              { stat = "Sum", period = 60, label = "Backend ALB" }
+            ]
+          ]
+          yAxis = { left = { min = 0 } }
+        }
+      },
+
+      # ALB 5xx Errors
+      {
+        type   = "metric"
+        x      = 12
+        y      = 6
+        width  = 12
+        height = 6
+        properties = {
+          title  = "ALB - HTTP 5xx Errors"
+          view   = "timeSeries"
+          region = var.aws_region
+          metrics = [
+            ["AWS/ApplicationELB", "HTTPCode_Target_5XX_Count",
+              "LoadBalancer", module.front_alb.arn_suffix,
+              { stat = "Sum", period = 60, label = "Frontend 5xx" }
+            ],
+            ["AWS/ApplicationELB", "HTTPCode_Target_5XX_Count",
+              "LoadBalancer", module.back_alb.arn_suffix,
+              { stat = "Sum", period = 60, label = "Backend 5xx" }
+            ]
+          ]
+          yAxis = { left = { min = 0 } }
+        }
+      },
+
+      # RDS CPU
+      {
+        type   = "metric"
+        x      = 0
+        y      = 12
+        width  = 8
+        height = 6
+        properties = {
+          title  = "RDS - CPU Utilization (%)"
+          view   = "timeSeries"
+          region = var.aws_region
+          metrics = [
+            ["AWS/RDS", "CPUUtilization",
+              "DBInstanceIdentifier", module.db_rds.db_instance_identifier,
+              { stat = "Average", period = 300 }
+            ]
+          ]
+          yAxis = { left = { min = 0, max = 100 } }
+        }
+      },
+
+      # RDS Free Storage
+      {
+        type   = "metric"
+        x      = 8
+        y      = 12
+        width  = 8
+        height = 6
+        properties = {
+          title  = "RDS - Free Storage Space (bytes)"
+          view   = "timeSeries"
+          region = var.aws_region
+          metrics = [
+            ["AWS/RDS", "FreeStorageSpace",
+              "DBInstanceIdentifier", module.db_rds.db_instance_identifier,
+              { stat = "Average", period = 300 }
+            ]
+          ]
+          yAxis = { left = { min = 0 } }
+        }
+      },
+
+      # RDS DB Connections
+      {
+        type   = "metric"
+        x      = 16
+        y      = 12
+        width  = 8
+        height = 6
+        properties = {
+          title  = "RDS - Database Connections"
+          view   = "timeSeries"
+          region = var.aws_region
+          metrics = [
+            ["AWS/RDS", "DatabaseConnections",
+              "DBInstanceIdentifier", module.db_rds.db_instance_identifier,
+              { stat = "Average", period = 300 }
+            ]
+          ]
+          yAxis = { left = { min = 0 } }
+        }
+      }
+    ]
+  })
+
+  depends_on = [
+    module.ecs,
+    module.front_alb,
+    module.back_alb,
+    module.db_rds
   ]
 }

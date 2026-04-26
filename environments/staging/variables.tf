@@ -16,50 +16,51 @@ variable "vpc_cidr" {
 
 variable "vpc_name" {
   type        = string
-  description = "the name of your vpc"
+  description = "The name of your vpc"
   default     = "my-vpc"
 }
 
 variable "vpc_azs" {
   type        = list(string)
-  description = "the availability zones of subnets within the vpc"
+  description = "The availability zones of subnets within the vpc"
 }
 
 variable "enable_dns_hostnames" {
   type        = bool
-  description = "enable or desable dns hostnames withing a vpc"
+  description = "Enable or disable dns hostnames within a vpc"
   default     = true
 }
 
 variable "enable_dns_support" {
   type        = bool
-  description = "enable or desable dns support withing a vpc"
+  description = "Enable or disable dns support within a vpc"
   default     = true
 }
 
 variable "private_subnets_cidrs" {
   type        = list(string)
-  description = "the list of cidr blocks for the private subnets"
+  description = "The list of cidr blocks for the private subnets"
   default     = []
 }
 
 variable "public_subnets_cidrs" {
   type        = list(string)
-  description = "the list of cidr blocks for the public subnets"
+  description = "The list of cidr blocks for the public subnets"
   default     = []
 }
 
 #########
-# BASTION INSTANCE  
+# BASTION INSTANCE
 #########
+
 variable "bastion_ami" {
   type        = string
-  description = "The id of ami to use for the bastion isntance"
+  description = "The id of ami to use for the bastion instance"
 }
 
 variable "bastion_name" {
   type        = string
-  description = ""
+  description = "The name of the bastion instance"
   default     = "bastion_instance"
 }
 
@@ -70,13 +71,13 @@ variable "bastion_type" {
 
 variable "enable_bastion_monitoring" {
   type        = bool
-  description = "Enable/desable bastion instance monitoring"
+  description = "Enable/disable bastion instance monitoring"
   default     = true
 }
 
 variable "bastion_ingress_rule_cidr" {
   type        = string
-  description = "The cidr block of baction security group ingress rule"
+  description = "The cidr block of bastion security group ingress rule"
   default     = "0.0.0.0/0"
 }
 
@@ -92,13 +93,14 @@ variable "prv_key_name" {
 
 variable "bastion_storage_size" {
   type        = number
-  description = "The storage to allocate in Gb for the bastion instance"
+  description = "The storage to allocate in GB for the bastion instance"
   default     = 30
 }
 
 #########
 # ALB
 #########
+
 variable "ecs_frontend_tasks_port" {
   type        = number
   description = "The port of ecs frontend tasks"
@@ -115,43 +117,43 @@ variable "ecs_backend_tasks_port" {
 
 variable "cluster_name" {
   type        = string
-  description = "ecs cluster name"
+  description = "ECS cluster name"
 }
 
 variable "frontend_task_definition_cpu" {
   type        = number
-  description = "the vcpu to reserve for the frontend task definition"
+  description = "The vCPU to reserve for the frontend task definition"
 }
 
 variable "frontend_task_definition_memory" {
   type        = number
-  description = "the memory to reserve for the frontend task definition"
+  description = "The memory to reserve for the frontend task definition"
 }
 
 variable "frontend_service_desired_tasks" {
   type        = number
-  description = "the desired tasks number for frontend tasks"
+  description = "The desired tasks number for frontend tasks"
 }
 
 variable "frontend_task_api_url" {
-  description = "Backend API URL for the frontend application"
   type        = string
-  default     = "" # it's set automatically
+  description = "Backend API URL for the frontend application"
+  default     = "" # set automatically from back_alb dns name if left empty
 }
 
 variable "backend_task_definition_cpu" {
   type        = number
-  description = "the vcpu to reserve for the backend task definition"
+  description = "The vCPU to reserve for the backend task definition"
 }
 
 variable "backend_task_definition_memory" {
   type        = number
-  description = "the memory to reserve for the backend task definition"
+  description = "The memory to reserve for the backend task definition"
 }
 
 variable "backend_service_desired_tasks" {
   type        = number
-  description = "the desired tasks number for backend tasks"
+  description = "The desired tasks number for backend tasks"
 }
 
 #########

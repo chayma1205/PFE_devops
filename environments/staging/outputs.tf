@@ -20,6 +20,7 @@ output "private_subnet_ids" {
 #########
 # BASTION INSTANCE
 #########
+
 output "bastion_public_ip" {
   description = "The public ip of bastion instance"
   value       = module.bastion_instance.public_ip
@@ -40,10 +41,10 @@ output "bastion_key_pair_name" {
   value       = aws_key_pair.bastion_key.key_name
 }
 
-
 #########
 # ALB
 #########
+
 output "front_alb_dns" {
   description = "The dns name of the frontend alb"
   value       = module.front_alb.dns_name
@@ -53,7 +54,6 @@ output "back_alb_dns" {
   description = "The dns name of the backend alb"
   value       = module.back_alb.dns_name
 }
-
 
 #########
 # ECS
@@ -68,7 +68,6 @@ output "ecs_cluster_arn" {
   description = "ECS cluster ARN"
   value       = module.ecs.cluster_arn
 }
-
 
 #########
 # RDS
@@ -94,8 +93,16 @@ output "rds_secret_arn" {
   value       = module.db_rds.db_instance_master_user_secret_arn
 }
 
-# RDS Resource Identifiers
 output "rds_instance_id" {
   description = "RDS instance ID"
   value       = module.db_rds.db_instance_identifier
+}
+
+#########
+# CLOUDWATCH
+#########
+
+output "cloudwatch_dashboard_url" {
+  description = "URL of the CloudWatch dashboard"
+  value       = "https://${var.aws_region}.console.aws.amazon.com/cloudwatch/home?region=${var.aws_region}#dashboards:name=${aws_cloudwatch_dashboard.main.dashboard_name}"
 }
