@@ -731,31 +731,6 @@ resource "aws_cloudwatch_dashboard" "main" {
         }
       },
 
-      # ALB 5xx Errors
-      {
-        type   = "metric"
-        x      = 12
-        y      = 6
-        width  = 12
-        height = 6
-        properties = {
-          title  = "ALB - HTTP 5xx Errors"
-          view   = "timeSeries"
-          region = var.aws_region
-          metrics = [
-            ["AWS/ApplicationELB", "HTTPCode_Target_5XX_Count",
-              "LoadBalancer", module.front_alb.arn_suffix,
-              { stat = "Sum", period = 60, label = "Frontend 5xx" }
-            ],
-            ["AWS/ApplicationELB", "HTTPCode_Target_5XX_Count",
-              "LoadBalancer", module.back_alb.arn_suffix,
-              { stat = "Sum", period = 60, label = "Backend 5xx" }
-            ]
-          ]
-          yAxis = { left = { min = 0 } }
-        }
-      },
-
       # RDS CPU
       {
         type   = "metric"
