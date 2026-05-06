@@ -4,9 +4,6 @@ resource "aws_iam_openid_connect_provider" "github" {
   client_id_list = ["sts.amazonaws.com"]
 }
 
-# Get current AWS account ID
-data "aws_caller_identity" "current" {}
-
 # IAM role assumed by GitHub Actions
 resource "aws_iam_role" "github_actions" {
   name = "github_actions_role"
