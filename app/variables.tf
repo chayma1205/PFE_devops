@@ -115,6 +115,28 @@ variable "backend_service_desired_tasks" {
 }
 
 #########
+# CloudWatch Dashboard
+#########
+
+variable "cloudwatch_dashboard_name" {
+  type        = string
+  description = "Name of the CloudWatch dashboard"
+  default     = "ecs-dashboard"
+}
+
+variable "cloudwatch_dashboard_period" {
+  type        = number
+  description = "Default metric period in seconds for dashboard widgets"
+  default     = 300 # 5 minutes
+}
+
+variable "cloudwatch_logs_limit" {
+  type        = number
+  description = "Number of log lines to display in each log widget"
+  default     = 50
+}
+
+#########
 # RDS
 #########
 

@@ -71,6 +71,20 @@ output "ecs_cluster_arn" {
   value       = module.ecs.cluster_arn
 }
 
+#########
+# CloudWatch
+#########
+
+output "cloudwatch_dashboard_name" {
+  description = "CloudWatch dashboard name"
+  value       = aws_cloudwatch_dashboard.ecs.dashboard_name
+}
+
+output "cloudwatch_dashboard_url" {
+  description = "Direct link to the CloudWatch dashboard in the AWS console"
+  value       = "https://${var.aws_region}.console.aws.amazon.com/cloudwatch/home?region=${var.aws_region}#dashboards:name=${aws_cloudwatch_dashboard.ecs.dashboard_name}"
+}
+
 
 #########
 # RDS

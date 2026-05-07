@@ -488,6 +488,110 @@ module "ecs" {
   ]
 }
 
+resource "aws_cloudwatch_dashboard" "ecs" {
+  dashboard_name = var.cloudwatch_dashboard_name
+
+  dashboard_body = jsonencode({
+    widgets = [
+      # ECS CPU Utilization
+      {
+        type   = "metric"
+        x      = 0
+        y      = 0
+        width  = 12
+        height = 6
+        properties = {
+          title  = "ECS CPU Utilization"
+          view   = "timeSeries"
+          stacked = false
+          region = var.aws_region
+          period = var.cloudwatch_dashboard_period
+          stat   = "Average"
+          metrics = [
+            ["AWS/ECS", "CPUUtilization",
+              "ClusterName", module.ecs.cluster_name,
+              "ServiceName", "frontend-service",
+              { label = "Frontend CPU" }
+            ],
+            ["AWS/ECS", "CPUUtilization",
+              "ClusterName", module.ecs.cluster_name,
+              "ServiceName", "backend-service",
+              { label = "Backend CPU" }
+            ]
+          ]
+          yAxis = { left = { min = 0, max = 100 } }
+        }
+      },
+
+      # ECS Memory Utilization
+      {
+        type   = "metric"
+        x      = 12
+        y      = 0
+        width  = 12
+        height = 6
+        properties = {
+          title  = "ECS Memory Utilization"
+          view   = "timeSeries"
+          stacked = false
+          region = var.aws_region
+          period = var.cloudwatch_dashboard_period
+          stat   = "Average"
+          metrics = [
+            ["AWS/ECS", "MemoryUtilization",
+              "ClusterName", module.ecs.cluster_name,
+              "ServiceName", "frontend-service",
+              { label = "Frontend Memory" }
+            ],
+            ["AWS/ECS", "MemoryUtilization",
+              "ClusterName", module.ecs.cluster_name,
+              "ServiceName", "backend-service",
+              { label = "Backend Memory" }
+            ]
+          ]
+          yAxis = { left = { min = 0, max = 100 } }
+        }
+      },
+
+      # Frontend Task Logs
+      {
+        type   = "log"
+        x      = 0
+        y      = 6
+        width  = 12
+        height = 6
+        properties = {
+          title   = "Frontend Task Logs"
+          region  = var.aws_region
+          view    = "table"
+          query   = "SOURCE '${aws_cloudwatch_log_group.frontend.name}' | fields @timestamp, @message | sort @timestamp desc | limit ${var.cloudwatch_logs_limit}"
+        }
+      },
+
+      # Backend Task Logs
+      {
+        type   = "log"
+        x      = 12
+        y      = 6
+        width  = 12
+        height = 6
+        properties = {
+          title   = "Backend Task Logs"
+          region  = var.aws_region
+          view    = "table"
+          query   = "SOURCE '${aws_cloudwatch_log_group.backend.name}' | fields @timestamp, @message | sort @timestamp desc | limit ${var.cloudwatch_logs_limit}"
+        }
+      }
+    ]
+  })
+
+  depends_on = [
+    module.ecs,
+    aws_cloudwatch_log_group.frontend,
+    aws_cloudwatch_log_group.backend
+  ]
+}
+
 # DATABASE RDS
 module "db_rds" {
   source  = "terraform-aws-modules/rds/aws"
