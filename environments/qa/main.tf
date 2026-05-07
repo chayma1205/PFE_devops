@@ -44,83 +44,6 @@ module "vpc" {
   }
 }
 
-resource "aws_key_pair" "bastion_key" {
-  key_name   = "bastion_key_pair"
-  public_key = file("${path.module}/${var.pub_key_name}")
-}
-
-module "bastion_instance" {
-  source  = "terraform-aws-modules/ec2-instance/aws"
-  version = "6.2.0"
-
-  ami           = var.bastion_ami
-  name          = var.bastion_name
-  instance_type = var.bastion_type
-  monitoring    = var.enable_bastion_monitoring
-  subnet_id     = module.vpc.public_subnets[0]
-  key_name      = aws_key_pair.bastion_key.key_name
-
-  user_data_base64 = base64encode(
-    templatefile(
-      "${path.module}/init_bastion.sh",
-      {
-        private_key      = file("${path.module}/${var.prv_key_name}")
-        init_sql_content = file("${path.module}/init.sql")
-        rds_endpoint     = module.db_rds.db_instance_address
-        rds_port         = var.rds_db_port
-        rds_username     = var.rds_db_username
-        rds_db_name      = var.rds_db_name
-        rds_secret_arn   = module.db_rds.db_instance_master_user_secret_arn
-        aws_region       = var.aws_region
-      }
-    )
-  )
-
-  # IAM role attachment
-  iam_instance_profile = module.iam_bastion.instance_profile_name
-
-  # security group config
-  create_security_group = true
-  security_group_name   = "${var.vpc_name}-bastion_sg"
-
-  security_group_ingress_rules = {
-    allow_ssh = {
-      cidr_ipv4   = var.bastion_ingress_rule_cidr
-      ip_protocol = "tcp"
-      from_port   = 22
-      to_port     = 22
-    }
-
-    # the bastion instance will temporarly host the database for the ecs tasks
-    allow_database_port = {
-      cidr_ipv4   = var.vpc_cidr
-      ip_protocol = "tcp"
-      from_port   = 5500
-      to_port     = 5500
-    }
-  }
-
-  security_group_egress_rules = {
-    allow_all = {
-      cidr_ipv4   = "0.0.0.0/0"
-      ip_protocol = "-1"
-    }
-  }
-
-  # instance storage
-  root_block_device = {
-    volume_size = var.bastion_storage_size
-    volume_type = "gp3"
-  }
-
-  tags = {
-    Name        = "${var.vpc_name}-bastion"
-    Description = "Allow ssh to vpc's private instances"
-  }
-
-  depends_on = [aws_key_pair.bastion_key]
-}
-
 # ALB
 module "front_alb" {
   source  = "terraform-aws-modules/alb/aws"
@@ -228,32 +151,6 @@ module "back_alb" {
   }
 
   depends_on = [module.vpc, module.front_alb]
-}
-
-module "iam_bastion" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role"
-  version = "6.4.0"
-
-  name                    = "${var.vpc_name}-bastion_role"
-  use_name_prefix         = false
-  create_instance_profile = true
-  description             = "This role is for Bastion instance"
-
-  trust_policy_permissions = {
-    TrustRoleAndServiceToAssume = {
-      actions = ["sts:AssumeRole"]
-      principals = [
-        {
-          type        = "Service"
-          identifiers = ["ec2.amazonaws.com"]
-        }
-      ]
-    }
-  }
-
-  policies = {
-    AWSSecretsManagerClientReadOnlyAccess = "arn:aws:iam::aws:policy/AWSSecretsManagerClientReadOnlyAccess"
-  }
 }
 
 module "iam_ecs_task_exec_role" {
@@ -422,7 +319,6 @@ resource "aws_cloudwatch_log_group" "backend" {
     Name = "backend-task-definition"
   }
 }
-
 
 # ECS Cluster and Service
 module "ecs" {

@@ -50,53 +50,6 @@ variable "public_subnets_cidrs" {
 }
 
 #########
-# BASTION INSTANCE  
-#########
-variable "bastion_ami" {
-  type        = string
-  description = "The id of ami to use for the bastion isntance"
-}
-
-variable "bastion_name" {
-  type        = string
-  description = ""
-  default     = "bastion_instance"
-}
-
-variable "bastion_type" {
-  type        = string
-  description = "Bastion instance type"
-}
-
-variable "enable_bastion_monitoring" {
-  type        = bool
-  description = "Enable/desable bastion instance monitoring"
-  default     = true
-}
-
-variable "bastion_ingress_rule_cidr" {
-  type        = string
-  description = "The cidr block of baction security group ingress rule"
-  default     = "0.0.0.0/0"
-}
-
-variable "pub_key_name" {
-  type        = string
-  description = "The name of public ssh key to copy to your bastion instance and private ec2 instances and allow ssh access to them with your private key"
-}
-
-variable "prv_key_name" {
-  type        = string
-  description = "The name of private ssh key to copy to your bastion instance so it can ssh into the private ec2 instances"
-}
-
-variable "bastion_storage_size" {
-  type        = number
-  description = "The storage to allocate in Gb for the bastion instance"
-  default     = 30
-}
-
-#########
 # ALB
 #########
 variable "ecs_frontend_tasks_port" {
