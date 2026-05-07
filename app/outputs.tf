@@ -1,0 +1,77 @@
+#########
+# VPC
+#########
+
+output "vpc_id" {
+  description = "ID of the VPC"
+  value       = module.vpc.vpc_id
+}
+
+output "public_subnet_ids" {
+  description = "IDs of public subnets"
+  value       = module.vpc.public_subnets
+}
+
+output "private_subnet_ids" {
+  description = "IDs of private subnets"
+  value       = module.vpc.private_subnets
+}
+
+#########
+# ALB
+#########
+output "front_alb_dns" {
+  description = "The dns name of the frontend alb"
+  value       = module.front_alb.dns_name
+}
+
+output "back_alb_dns" {
+  description = "The dns name of the backend alb"
+  value       = module.back_alb.dns_name
+}
+
+
+#########
+# ECS
+#########
+
+output "ecs_cluster_name" {
+  description = "ECS cluster name"
+  value       = module.ecs.cluster_name
+}
+
+output "ecs_cluster_arn" {
+  description = "ECS cluster ARN"
+  value       = module.ecs.cluster_arn
+}
+
+
+#########
+# RDS
+#########
+
+output "rds_address" {
+  description = "RDS instance address"
+  value       = module.db_rds.db_instance_address
+}
+
+output "rds_port" {
+  description = "RDS instance port"
+  value       = module.db_rds.db_instance_port
+}
+
+output "rds_database_name" {
+  description = "Name of the database"
+  value       = module.db_rds.db_instance_name
+}
+
+output "rds_secret_arn" {
+  description = "RDS secret ARN (from secrets manager)"
+  value       = module.db_rds.db_instance_master_user_secret_arn
+}
+
+# RDS Resource Identifiers
+output "rds_instance_id" {
+  description = "RDS instance ID"
+  value       = module.db_rds.db_instance_identifier
+}
