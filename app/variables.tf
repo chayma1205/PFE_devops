@@ -70,6 +70,58 @@ variable "ecs_backend_tasks_port" {
 }
 
 #########
+# ECS Auto Scaling
+#########
+
+variable "frontend_scaling_min_capacity" {
+  type        = number
+  description = "Minimum number of frontend ECS tasks"
+  default     = 1
+}
+
+variable "frontend_scaling_max_capacity" {
+  type        = number
+  description = "Maximum number of frontend ECS tasks"
+  default     = 4
+}
+
+variable "frontend_scaling_cpu_threshold" {
+  type        = number
+  description = "Target CPU utilization (%) to trigger frontend scaling"
+  default     = 60
+}
+
+variable "frontend_scaling_memory_threshold" {
+  type        = number
+  description = "Target memory utilization (%) to trigger frontend scaling"
+  default     = 70
+}
+
+variable "backend_scaling_min_capacity" {
+  type        = number
+  description = "Minimum number of backend ECS tasks"
+  default     = 1
+}
+
+variable "backend_scaling_max_capacity" {
+  type        = number
+  description = "Maximum number of backend ECS tasks"
+  default     = 4
+}
+
+variable "backend_scaling_cpu_threshold" {
+  type        = number
+  description = "Target CPU utilization (%) to trigger backend scaling"
+  default     = 60
+}
+
+variable "backend_scaling_memory_threshold" {
+  type        = number
+  description = "Target memory utilization (%) to trigger backend scaling"
+  default     = 70
+}
+
+#########
 # ECS
 #########
 

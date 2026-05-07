@@ -360,6 +360,99 @@ resource "aws_cloudwatch_log_group" "backend" {
   }
 }
 
+# ECS Auto Scaling
+resource "aws_appautoscaling_target" "frontend" {
+  service_namespace  = "ecs"
+  resource_id        = "service/${module.ecs.cluster_name}/frontend-service"
+  scalable_dimension = "ecs:service:DesiredCount"
+  min_capacity       = var.frontend_scaling_min_capacity
+  max_capacity       = var.frontend_scaling_max_capacity
+
+  depends_on = [module.ecs]
+}
+
+resource "aws_appautoscaling_policy" "frontend_cpu" {
+  name               = "frontend-cpu-scaling"
+  policy_type        = "TargetTrackingScaling"
+  service_namespace  = aws_appautoscaling_target.frontend.service_namespace
+  resource_id        = aws_appautoscaling_target.frontend.resource_id
+  scalable_dimension = aws_appautoscaling_target.frontend.scalable_dimension
+
+  target_tracking_scaling_policy_configuration {
+    target_value       = var.frontend_scaling_cpu_threshold
+    scale_in_cooldown  = 300
+    scale_out_cooldown = 60
+
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+  }
+}
+
+resource "aws_appautoscaling_policy" "frontend_memory" {
+  name               = "frontend-memory-scaling"
+  policy_type        = "TargetTrackingScaling"
+  service_namespace  = aws_appautoscaling_target.frontend.service_namespace
+  resource_id        = aws_appautoscaling_target.frontend.resource_id
+  scalable_dimension = aws_appautoscaling_target.frontend.scalable_dimension
+
+  target_tracking_scaling_policy_configuration {
+    target_value       = var.frontend_scaling_memory_threshold
+    scale_in_cooldown  = 300
+    scale_out_cooldown = 60
+
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageMemoryUtilization"
+    }
+  }
+}
+
+resource "aws_appautoscaling_target" "backend" {
+  service_namespace  = "ecs"
+  resource_id        = "service/${module.ecs.cluster_name}/backend-service"
+  scalable_dimension = "ecs:service:DesiredCount"
+  min_capacity       = var.backend_scaling_min_capacity
+  max_capacity       = var.backend_scaling_max_capacity
+
+  depends_on = [module.ecs]
+}
+
+resource "aws_appautoscaling_policy" "backend_cpu" {
+  name               = "backend-cpu-scaling"
+  policy_type        = "TargetTrackingScaling"
+  service_namespace  = aws_appautoscaling_target.backend.service_namespace
+  resource_id        = aws_appautoscaling_target.backend.resource_id
+  scalable_dimension = aws_appautoscaling_target.backend.scalable_dimension
+
+  target_tracking_scaling_policy_configuration {
+    target_value       = var.backend_scaling_cpu_threshold
+    scale_in_cooldown  = 300
+    scale_out_cooldown = 60
+
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+  }
+}
+
+resource "aws_appautoscaling_policy" "backend_memory" {
+  name               = "backend-memory-scaling"
+  policy_type        = "TargetTrackingScaling"
+  service_namespace  = aws_appautoscaling_target.backend.service_namespace
+  resource_id        = aws_appautoscaling_target.backend.resource_id
+  scalable_dimension = aws_appautoscaling_target.backend.scalable_dimension
+
+  target_tracking_scaling_policy_configuration {
+    target_value       = var.backend_scaling_memory_threshold
+    scale_in_cooldown  = 300
+    scale_out_cooldown = 60
+
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageMemoryUtilization"
+    }
+  }
+}
+
 # ECS Cluster and Service
 module "ecs" {
   source = "terraform-aws-modules/ecs/aws"

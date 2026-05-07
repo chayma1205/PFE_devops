@@ -56,6 +56,39 @@ output "back_alb_dns" {
   value       = module.back_alb.dns_name
 }
 
+#########
+# ECS Auto Scaling
+#########
+
+output "frontend_autoscaling_target_id" {
+  description = "Frontend autoscaling target resource ID"
+  value       = aws_appautoscaling_target.frontend.resource_id
+}
+
+output "frontend_autoscaling_min_capacity" {
+  description = "Frontend minimum task count"
+  value       = aws_appautoscaling_target.frontend.min_capacity
+}
+
+output "frontend_autoscaling_max_capacity" {
+  description = "Frontend maximum task count"
+  value       = aws_appautoscaling_target.frontend.max_capacity
+}
+
+output "backend_autoscaling_target_id" {
+  description = "Backend autoscaling target resource ID"
+  value       = aws_appautoscaling_target.backend.resource_id
+}
+
+output "backend_autoscaling_min_capacity" {
+  description = "Backend minimum task count"
+  value       = aws_appautoscaling_target.backend.min_capacity
+}
+
+output "backend_autoscaling_max_capacity" {
+  description = "Backend maximum task count"
+  value       = aws_appautoscaling_target.backend.max_capacity
+}
 
 #########
 # ECS
