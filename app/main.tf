@@ -1,3 +1,26 @@
+# ECR for backend and frontend images
+resource "aws_ecr_repository" "backend" {
+  name                 = "backend-todo"
+  image_tag_mutability = "IMMUTABLE"
+
+  image_tag_mutability_exclusion_filter {
+    filter      = "latest"
+    filter_type = "WILDCARD"
+  }
+}
+
+# ECR private repository
+resource "aws_ecr_repository" "frontend" {
+  name                 = "frontend-todo"
+  image_tag_mutability = "IMMUTABLE"
+
+  image_tag_mutability_exclusion_filter {
+    filter      = "latest"
+    filter_type = "WILDCARD"
+  }
+}
+
+
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 6.6"
