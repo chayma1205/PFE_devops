@@ -20,6 +20,23 @@ resource "aws_ecr_repository" "frontend" {
   }
 }
 
+# Github OIDC for github actions 
+module "github_oidc" {
+  source  = "terraform-module/github-oidc-provider/aws"
+  version = "2.2.2"
+
+  role_name = "github-actions-role"
+
+  repositories = [
+    var.github_repo
+  ]
+
+  oidc_role_attach_policies = [
+    "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess",
+    "arn:aws:iam::aws:policy/AmazonECS_FullAccess"
+  ]
+}
+
 
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"

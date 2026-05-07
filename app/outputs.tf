@@ -11,6 +11,18 @@ output "frontend_repo_url" {
   value       = aws_ecr_repository.frontend.repository_url
 }
 
+#########
+# Github OIDC
+#########
+output "oidc_provider_arn" {
+  description = "ARN of the GitHub OIDC provider"
+  value       = module.github_oidc.oidc_provider_arn
+}
+
+output "github_role_arn" {
+  description = "ARN of the GitHub Actions IAM role"
+  value       = module.github_oidc.oidc_role_arn
+}
 
 #########
 # VPC

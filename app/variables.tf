@@ -1,4 +1,11 @@
 #########
+# Github OIDC
+#########
+variable "github_repo" {
+  description = "The Github repo that will assume the IAM role"
+}
+
+#########
 # VPC
 #########
 
