@@ -1,113 +1,173 @@
-variable "aws_region" {
-  description = "AWS Region"
-  type        = string
-  default     = "us-east-1"   
-}
+#########
+# VPC
+#########
 
-variable "vpc_name" {
-  type    = string
-  default = "todo-vpc"
+variable "aws_region" {
+  type        = string
+  description = "The region for the provisioned aws infra"
+  default     = "us-east-2"
 }
 
 variable "vpc_cidr" {
-  type    = string
-  default = "10.0.0.0/16"
+  type        = string
+  description = "VPC cidr block"
+  default     = "10.0.0.0/16"
+}
+
+variable "vpc_name" {
+  type        = string
+  description = "the name of your vpc"
+  default     = "my-vpc"
 }
 
 variable "vpc_azs" {
-  type    = list(string)
-  default = ["us-east-1a", "us-east-1b"]   
+  type        = list(string)
+  description = "the availability zones of subnets within the vpc"
 }
 
-variable "public_subnets_cidrs" {
-  type    = list(string)
-  default = ["10.0.10.0/24", "10.0.11.0/24"]
+variable "enable_dns_hostnames" {
+  type        = bool
+  description = "enable or desable dns hostnames withing a vpc"
+  default     = true
+}
+
+variable "enable_dns_support" {
+  type        = bool
+  description = "enable or desable dns support withing a vpc"
+  default     = true
 }
 
 variable "private_subnets_cidrs" {
-  type    = list(string)
-  default = ["10.0.20.0/24", "10.0.21.0/24"]
+  type        = list(string)
+  description = "the list of cidr blocks for the private subnets"
+  default     = []
 }
 
-variable "enable_dns_hostnames" { default = true }
-variable "enable_dns_support"   { default = true }
-
-variable "project_name" {
-  type    = string
-  default = "todo-app"
+variable "public_subnets_cidrs" {
+  type        = list(string)
+  description = "the list of cidr blocks for the public subnets"
+  default     = []
 }
 
-variable "environment" {
-  type    = string
-  default = "dev"   
-}
-# ──────────────────────────────────────────
-# Environment-specific specs
-# ──────────────────────────────────────────
-
-variable "backend_cpu" {
-  description = "ECS backend task CPU units"
+#########
+# ALB
+#########
+variable "ecs_frontend_tasks_port" {
   type        = number
-  default     = 512
+  description = "The port of ecs frontend tasks"
 }
 
-
-variable "backend_memory" {
-  description = "ECS backend task memory (MB)"
+variable "ecs_backend_tasks_port" {
   type        = number
-  default     = 1024
+  description = "The port of ecs backend tasks"
 }
 
-variable "backend_desired_count" {
-  description = "Number of backend ECS tasks"
-  type        = number
-  default     = 1
+#########
+# ECS
+#########
+
+variable "cluster_name" {
+  type        = string
+  description = "ecs cluster name"
 }
 
-variable "frontend_cpu" {
-  description = "ECS frontend task CPU units"
+variable "frontend_task_definition_cpu" {
   type        = number
-  default     = 256
+  description = "the vcpu to reserve for the frontend task definition"
 }
 
-variable "frontend_memory" {
-  description = "ECS frontend task memory (MB)"
+variable "frontend_task_definition_memory" {
   type        = number
-  default     = 512
+  description = "the memory to reserve for the frontend task definition"
 }
 
-variable "frontend_desired_count" {
-  description = "Number of frontend ECS tasks"
+variable "frontend_service_desired_tasks" {
   type        = number
-  default     = 1
+  description = "the desired tasks number for frontend tasks"
+  default = 2
+}
+
+variable "frontend_task_api_url" {
+  description = "Backend API URL for the frontend application"
+  type        = string
+  default     = "" # it's set automatically
+}
+
+variable "backend_task_definition_cpu" {
+  type        = number
+  description = "the vcpu to reserve for the backend task definition"
+}
+
+variable "backend_task_definition_memory" {
+  type        = number
+  description = "the memory to reserve for the backend task definition"
+}
+
+variable "backend_service_desired_tasks" {
+  type        = number
+  description = "the desired tasks number for backend tasks"
+  default = 2
+}
+
+#########
+# RDS
+#########
+
+variable "rds_instance_name" {
+  type        = string
+  description = "The name of the RDS instance"
+  default     = "app_db"
+}
+
+variable "rds_engine" {
+  type        = string
+  description = "The database engine to use"
+  default     = "postgres"
+}
+
+variable "rds_engine_version" {
+  type        = string
+  description = "The engine version to use"
+  default     = "17"
 }
 
 variable "rds_instance_class" {
-  description = "RDS instance type"
   type        = string
-  default     = "db.t3.micro"
+  description = "The instance type of the RDS instance"
+  default     = "db.t4g.small"
 }
 
-variable "rds_allocated_storage" {
-  description = "RDS allocated storage in GB"
+variable "rds_db_name" {
+  type        = string
+  description = "The DB name to create. If omitted, no database is created initially"
+}
+
+variable "rds_db_username" {
+  type        = string
+  description = "Username for the master DB user"
+  default     = "master"
+}
+
+variable "rds_db_port" {
+  type        = string
+  description = "The port on which the DB accepts connections"
+  default     = "5432"
+}
+
+variable "rds_db_allocated_storage" {
   type        = number
+  description = "The allocated storage in gigabytes, must be >= 20"
   default     = 20
 }
 
-variable "rds_multi_az" {
-  description = "Enable RDS Multi-AZ"
-  type        = bool
-  default     = false
-}
-
-variable "rds_backup_retention_period" {
-  description = "RDS backup retention in days"
+variable "rds_db_max_allocated_storage" {
   type        = number
-  default     = 7
+  description = "Specifies the value for Storage Autoscaling"
+  default     = 100
 }
 
-variable "db_password_ssm_value" {
-  description = "The actual DB password stored in SSM"
-  type        = string
-  sensitive   = true
+variable "rds_multi_az" {
+  type        = bool
+  description = "Specifies if the RDS instance is multi-AZ"
+  default     = false
 }

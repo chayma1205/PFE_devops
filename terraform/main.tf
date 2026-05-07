@@ -12,15 +12,24 @@ module "vpc" {
   enable_dns_hostnames = var.enable_dns_hostnames
   enable_dns_support   = var.enable_dns_support
 
+  map_public_ip_on_launch = true #! ?
+
+  public_subnet_names = [
+    for i, k in var.public_subnets_cidrs : "pub-subnet-${i + 1}"
+  ]
+
+  private_subnet_names = [
+    for i, k in var.private_subnets_cidrs : "-subnet-${i + 1}"
+  ]
+
   enable_nat_gateway = true
   single_nat_gateway = true
 
   public_subnet_suffix  = "pub"
   private_subnet_suffix = "prv"
-
-  tags = {
-    Project     = var.project_name
-    Environment = var.environment
+  
+  nat_gateway_tags = {
+    Name = "${var.vpc_name}-nat-gw"
   }
 
   igw_tags = {
@@ -35,271 +44,320 @@ module "vpc" {
     Name = "${var.vpc_name}-private-rt"
   }
 }
+# ALB
+module "front_alb" {
+  source  = "terraform-aws-modules/alb/aws"
+  version = "10.5.0"
 
-
-
-//ALB
-resource "aws_lb" "frontend" {
-  name               = "${var.project_name}-frontend-alb"
-  internal           = false
-  load_balancer_type = "application"
-  security_groups    = [aws_security_group.alb_sg.id]
+  name               = "front-alb"
+  vpc_id             = module.vpc.vpc_id
   subnets            = module.vpc.public_subnets
-}
-
-resource "aws_lb_listener" "frontend_http" {
-  load_balancer_arn = aws_lb.frontend.arn
-  port              = 80
-  protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.frontend.arn
-  }
-}
-resource "aws_lb_target_group" "frontend" {
-  name        = "${var.project_name}-frontend-tg"
-  port        = 80
-  protocol    = "HTTP"
-  vpc_id      = module.vpc.vpc_id
-  target_type = "ip"  
-
-  health_check {
-    enabled             = true
-    path                = "/"          
-    interval            = 30
-    timeout             = 5
-    healthy_threshold   = 3
-    unhealthy_threshold = 3
-    matcher             = "200-399"
-  }
-
-  tags = {
-    Name = "${var.project_name}-frontend-tg"
-  }
-}
-
-
-resource "aws_lb" "backend" {
-  name               = "${var.project_name}-backend-alb"
-  internal           = false
   load_balancer_type = "application"
-  security_groups    = [aws_security_group.alb_sg.id]
+  internal           = false
+
+  # Security Group
+  security_group_name            = "frontend-alb-sg"
+  security_group_use_name_prefix = false
+  security_group_ingress_rules = {
+    http = {
+      from_port   = 80
+      to_port     = 80
+      ip_protocol = "tcp"
+      description = "HTTP web traffic"
+      cidr_ipv4   = "0.0.0.0/0"
+    }
+  }
+
+  security_group_egress_rules = {
+    all_traffic = {
+      ip_protocol = "-1"
+      cidr_ipv4   = "0.0.0.0/0"
+    }
+  }
+
+  listeners = {
+    https = {
+      port     = 80
+      protocol = "HTTP"
+
+      forward = {
+        target_group_key = "ecs-frontend-tasks-tg"
+      }
+    }
+  }
+
+  target_groups = {
+    ecs-frontend-tasks-tg = {
+      name              = "frontend-tg"
+      protocol          = "HTTP"
+      port              = var.ecs_frontend_tasks_port
+      target_type       = "ip"
+      create_attachment = false # avoid attatching ips when creating the alb
+    }
+  }
+
+  depends_on = [module.vpc]
+}
+
+module "back_alb" {
+  source  = "terraform-aws-modules/alb/aws"
+  version = "10.5.0"
+
+  name               = "back-alb"
+  vpc_id             = module.vpc.vpc_id
   subnets            = module.vpc.public_subnets
-}
+  load_balancer_type = "application"
+  internal           = false
 
-resource "aws_lb_listener" "backend_http" {
-  load_balancer_arn = aws_lb.backend.arn
-  port              = 80
-  protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.backend.arn
-  }
-}
-
-
-resource "aws_lb_target_group" "backend" {
-  name        = "${var.project_name}-backend-tg"
-  port        = 8000
-  protocol    = "HTTP"
-  vpc_id      = module.vpc.vpc_id
-  target_type = "ip"
-
-  health_check {
-    enabled             = true
-    path                = "/"          
-    interval            = 30
-    timeout             = 5
-    healthy_threshold   = 3
-    unhealthy_threshold = 3
-    matcher             = "200"
+  # Security Group
+  security_group_name            = "backend-alb-sg"
+  security_group_use_name_prefix = false
+  security_group_ingress_rules = {
+    http = {
+      from_port   = 80
+      to_port     = 80
+      ip_protocol = "tcp"
+      description = "HTTP web traffic"
+      cidr_ipv4   = "0.0.0.0/0"
+    }
   }
 
-  tags = {
-    Name = "${var.project_name}-backend-tg"
+  security_group_egress_rules = {
+    all_traffic = {
+      ip_protocol = "-1"
+      cidr_ipv4   = "0.0.0.0/0"
+    }
   }
+
+  listeners = {
+    https = {
+      port     = 80
+      protocol = "HTTP"
+
+      forward = {
+        target_group_key = "ecs-backend-tasks-tg"
+      }
+    }
+  }
+
+  target_groups = {
+    ecs-backend-tasks-tg = {
+      name              = "backend-tg"
+      protocol          = "HTTP"
+      port              = var.ecs_backend_tasks_port
+      target_type       = "ip"
+      create_attachment = false # avoid attatching ips when creating the alb
+    }
+  }
+
+  depends_on = [module.vpc, module.front_alb]
 }
 
 //ecr
 resource "aws_ecr_repository" "backend" {
-  name                 = "${var.project_name}-backend"
+  name                 = "backend-todo"
   image_tag_mutability = "MUTABLE"   
-  force_delete         = true        
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-
-  tags = {
-    Project     = var.project_name
-    Environment = var.environment
-  }
+  force_delete         = true
 }
 
 resource "aws_ecr_repository" "frontend" {
-  name                 = "${var.project_name}-frontend"
+  name                 = "frontend-todo"
   image_tag_mutability = "MUTABLE"
   force_delete         = true
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-
-  tags = {
-    Project     = var.project_name
-    Environment = var.environment
-  }
-}
-
-//sg
-# Security Group for ALB (public - allows HTTP/HTTPS from anywhere)
-resource "aws_security_group" "alb_sg" {
-  name        = "${var.project_name}-alb-sg"
-  description = "Allow inbound HTTP/HTTPS to ALB"
-  vpc_id      = module.vpc.vpc_id
-
-  ingress {
-    description = "HTTP from anywhere"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name        = "${var.project_name}-alb-sg"
-    Project     = var.project_name
-    Environment = var.environment
-  }
-}
-
-# Security Group for ECS tasks (backend, frontend, db) - allows traffic from ALB + internal
-resource "aws_security_group" "ecs_tasks_sg" {
-  name        = "${var.project_name}-ecs-tasks-sg"
-  description = "Allow traffic to/from ECS tasks"
-  vpc_id      = module.vpc.vpc_id
-
-  ingress {
-    description     = "Allow traffic from ALB"
-    from_port       = 0
-    to_port         = 0
-    protocol        = "-1"
-    security_groups = [aws_security_group.alb_sg.id]
-  }
-
-  ingress {
-    description = "Allow internal VPC traffic (for DB access etc.)"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = [var.vpc_cidr]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name        = "${var.project_name}-ecs-tasks-sg"
-    Project     = var.project_name
-    Environment = var.environment
-  }
-}
-
-resource "aws_security_group_rule" "allow_db_from_ecs" {
-  type                     = "ingress"
-  from_port                = 5432
-  to_port                  = 5432
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.ecs_tasks_sg.id   
-  source_security_group_id = aws_security_group.ecs_tasks_sg.id
 }
 
 //ecs
-# ECS Cluster
-resource "aws_ecs_cluster" "main" {
-  name = "${var.project_name}-cluster"
+module "ecs" {
+  source = "terraform-aws-modules/ecs/aws"
 
-  setting {
-    name  = "containerInsights"
-    value = "enabled"
-  }
+  cluster_name = var.cluster_name
 
-  tags = {
-    Project     = var.project_name
-    Environment = var.environment
-  }
-}
+  cluster_capacity_providers = ["FARGATE", "FARGATE_SPOT"]
 
-# IAM Role for ECS Task Execution (pull images, logs, etc.)
-resource "aws_iam_role" "ecs_task_execution_role" {
-  name = "${var.project_name}-ecs-task-execution"
+  create_cloudwatch_log_group            = false
+  cloudwatch_log_group_retention_in_days = 7
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "ecs-tasks.amazonaws.com"
+  services = {
+    frontend = {
+
+      name   = "frontend-service"
+      family = "frontend-task-definition"
+      
+      create_task_definition = false
+      task_definition_arn    = aws_ecs_task_definition.frontend.arn
+      ignore_task_definition_changes = true
+
+      # ECS task execution role
+      task_exec_iam_role_arn    = module.iam_ecs_task_exec_role.arn
+      create_task_exec_iam_role = false
+
+      desired_count = var.frontend_service_desired_tasks
+      
+      subnet_ids    = module.vpc.private_subnets
+      vpc_id = module.vpc.vpc_id
+
+
+      # remove asg configs
+      enable_autoscaling       = true
+      autoscaling_min_capacity = 2
+      autoscaling_max_capacity = 5
+
+      # Target Tracking Policies (CPU + Memory)
+      autoscaling_policies = {
+        cpu = {
+          policy_type        = "TargetTrackingScaling"
+          target_value       = 70.0     # Scale when CPU > 70%
+          predefined_metric  = "ECSServiceAverageCPUUtilization"
+        }
+
+        memory = {
+          policy_type        = "TargetTrackingScaling"
+          target_value       = 70.0     # Scale when Memory > 70%
+          predefined_metric  = "ECSServiceAverageMemoryUtilization"
         }
       }
-    ]
-  })
-}
 
-resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
-  role       = aws_iam_role.ecs_task_execution_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-}
-resource "aws_iam_role_policy_attachment" "ecs_ssm_read" {
-  role       = aws_iam_role.ecs_task_execution_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess"
-}
-resource "aws_iam_role" "ecs_task_role" {
-  name = "${var.project_name}-ecs-task-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "ecs-tasks.amazonaws.com"
+      load_balancer = {
+        service = {
+          target_group_arn = module.front_alb.target_groups["ecs-frontend-tasks-tg"].arn
+          container_name   = "frontend"
+          container_port   = var.ecs_frontend_tasks_port
         }
       }
-    ]
-  })
-}
-resource "aws_iam_role_policy_attachment" "ecs_task_ssm_read" {
-  role       = aws_iam_role.ecs_task_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess"
-}
 
+      security_group_ingress_rules = {
+        ingress_http = {
+          from_port                    = var.ecs_frontend_tasks_port
+          to_port                      = var.ecs_frontend_tasks_port
+          ip_protocol                  = "tcp"
+          referenced_security_group_id = module.front_alb.security_group_id
+          description                  = "ALB HTTP access"
+        }
+      }
+
+      security_group_egress_rules = {
+        egress_all = {
+          ip_protocol = "-1"
+          cidr_ipv4   = "0.0.0.0/0"
+        }
+      }
+
+      
+    }
+
+    backend = {
+
+      name   = "backend-service"
+      family = "backend-task-definition"
+
+      create_task_definition = false
+      ignore_task_definition_changes = true
+      task_definition_arn    = aws_ecs_task_definition.backend.arn
+
+      task_exec_iam_role_arn    = module.iam_ecs_task_exec_role.arn
+      create_task_exec_iam_role = false
+
+      desired_count    = var.backend_service_desired_tasks
+
+      subnet_ids       = module.vpc.private_subnets
+      assign_public_ip = false
+      vpc_id = module.vpc.vpc_id
+
+
+      # add as configs
+      enable_autoscaling       = true
+      autoscaling_min_capacity = 2
+      autoscaling_max_capacity = 5
+
+      autoscaling_policies = {
+        cpu = {
+          policy_type        = "TargetTrackingScaling"
+          target_value       = 70.0
+          predefined_metric  = "ECSServiceAverageCPUUtilization"
+        }
+
+        memory = {
+          policy_type        = "TargetTrackingScaling"
+          target_value       = 70.0
+          predefined_metric  = "ECSServiceAverageMemoryUtilization"
+        }
+      }
+
+      load_balancer = {
+        service = {
+          target_group_arn = module.back_alb.target_groups["ecs-backend-tasks-tg"].arn
+          container_name   = "backend"
+          container_port   = var.ecs_backend_tasks_port
+        }
+      }
+
+      security_group_ingress_rules = {
+        ingress_http = {
+          from_port                    = var.ecs_backend_tasks_port
+          to_port                      = var.ecs_backend_tasks_port
+          ip_protocol                  = "tcp"
+          referenced_security_group_id = module.back_alb.security_group_id
+          description                  = "ALB HTTP access"
+        }
+      }
+
+      security_group_egress_rules = {
+        egress_all = {
+          ip_protocol = "-1"
+          cidr_ipv4   = "0.0.0.0/0"
+        }
+      }
+
+
+    }
+  }
+
+  depends_on = [
+    module.vpc,
+    module.front_alb,
+    module.back_alb,
+    aws_ecs_task_definition.frontend,
+    aws_ecs_task_definition.backend,
+    aws_cloudwatch_log_group.frontend,
+    aws_cloudwatch_log_group.backend
+  ]
+}
+module "iam_ecs_task_exec_role" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role"
+  version = "6.4.0"
+
+  name                    = "${var.vpc_name}-ecs-task-execution-role"
+  use_name_prefix         = false
+  create_instance_profile = false
+
+  description = "This role is for ECS agents, using this custom role in order to avoid creating a new role for each task definition by the ecs module"
+
+  trust_policy_permissions = {
+    TrustRoleAndServiceToAssume = {
+      actions = ["sts:AssumeRole"]
+      principals = [
+        {
+          type        = "Service"
+          identifiers = ["ecs-tasks.amazonaws.com"]
+        }
+      ]
+    }
+  }
+
+  policies = {
+    AWSSecretsManagerClientReadOnlyAccess = "arn:aws:iam::aws:policy/AWSSecretsManagerClientReadOnlyAccess" // the ecs agent needs to fetch secrets from secrets manager service
+    AmazonECSTaskExecutionRolePolicy      = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+  }
+}
 
 //ecs services
 resource "aws_ecs_task_definition" "backend" {
-  family                   = "${var.project_name}-${var.environment}-backend"
+  family                   = "backend-task-definition"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = tostring(var.backend_cpu)
-  memory                   = tostring(var.backend_memory)
-  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
-  task_role_arn      = aws_iam_role.ecs_task_role.arn
+  cpu                      = var.backend_task_definition_cpu
+  memory                   = var.backend_task_definition_memory
+  execution_role_arn       = module.iam_ecs_task_exec_role.arn
 
   container_definitions = jsonencode([
     {
@@ -308,70 +366,54 @@ resource "aws_ecs_task_definition" "backend" {
       essential = true
       portMappings = [
         {
-          containerPort = 8000
-          hostPort      = 8000
+          containerPort = var.ecs_backend_tasks_port
+          protocol      = "tcp"
         }
       ]
       environment = [
-        { name = "AWS_REGION",           value = var.aws_region },
-        { name = "DB_USER", value = "maissen" },
-        { name = "DB_NAME", value = "tododb" },
-        { name = "DB_HOST", value = module.rds_postgres.db_instance_address },
-        { name = "DB_PORT", value = tostring(module.rds_postgres.db_instance_port) },
+        { name = "DB_HOST",     value = module.db_rds.db_instance_address },
+        { name = "DB_PORT",     value = tostring(module.db_rds.db_instance_port) },
+        { name = "DB_NAME",     value = module.db_rds.db_instance_name },
+        { name = "DB_USER",     value = var.rds_db_username },
+        { name = "DB_ENGINE",   value = "postgres" },           # Maybe the app checks this
+        //{ name = "DB_DIALECT",  value = "postgresql" }            # Some apps use this
+        { name = "DATABASE_URL", value = "postgresql://${var.rds_db_username}:dummy@${module.db_rds.db_instance_address}:${module.db_rds.db_instance_port}/${module.db_rds.db_instance_name}" }      
       ]
       secrets = [
+        //{name      = "DB_USER", valueFrom = "${module.db_rds.db_instance_master_user_secret_arn}:username::"},
         {
-          name = "DB_PASSWORD"
-          valueFrom= aws_ssm_parameter.db_password.arn
-        }  
+          name      = "DB_PASSWORD"
+          valueFrom = "${module.db_rds.db_instance_master_user_secret_arn}:password::"
+          }
       ]
+
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = "/ecs/${var.project_name}-${var.environment}-backend"
+          "awslogs-group"         = aws_cloudwatch_log_group.backend.name
           "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "backend"
+          "awslogs-create-group"  = "true"
         }
       }
     }
   ])
-}
-
-resource "aws_ecs_service" "backend" {
-  name                               = "${var.project_name}-${var.environment}-backend"
-  cluster                            = aws_ecs_cluster.main.id
-  task_definition                    = aws_ecs_task_definition.backend.arn
-  desired_count                      = var.backend_desired_count
-  launch_type                        = "FARGATE"
-  deployment_maximum_percent         = 200
-  deployment_minimum_healthy_percent = 100
-
-  load_balancer {
-    target_group_arn = aws_lb_target_group.backend.arn
-    container_name   = "backend"
-    container_port   = 8000
-  }
-
-  network_configuration {
-    subnets          = module.vpc.private_subnets
-    security_groups  = [aws_security_group.ecs_tasks_sg.id]
-    assign_public_ip = false
+  lifecycle {
+    ignore_changes = [container_definitions] # Ignored because the CD pipeline will update each time the container image
   }
 
   tags = {
-    Project     = var.project_name
-    Environment = var.environment
+    Name = "backend-task-definition"
   }
 }
 
-
 resource "aws_ecs_task_definition" "frontend" {
-  family                   = "${var.project_name}-${var.environment}-frontend"
+  family                   = "frontend-task-definition"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = tostring(var.frontend_cpu)    
-  memory                   = tostring(var.frontend_memory)
-  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  cpu                      = var.frontend_task_definition_cpu
+  memory                   = var.frontend_task_definition_memory
+  execution_role_arn       = module.iam_ecs_task_exec_role.arn
 
   container_definitions = jsonencode([
     {
@@ -380,131 +422,227 @@ resource "aws_ecs_task_definition" "frontend" {
       essential = true
       portMappings = [
         {
-          containerPort = 80
-          hostPort      = 80
+          containerPort = var.ecs_frontend_tasks_port
+          protocol      = "tcp"
         }
       ]
       environment = [
-        { name = "API_URL", value = "http://${aws_lb.backend.dns_name}" }  
+        {
+          name  = "API_URL"
+          value = var.frontend_task_api_url == "" ? "http://${module.back_alb.dns_name}" : var.frontend_task_api_url
+        }
       ]
-      logConfiguration = {
-        logDriver = "awslogs"
+
+      logConfiguration = { //tells ECS how to handle logs for this container.
+        logDriver = "awslogs" //use CloudWatch as the place to store logs
         options = {
-          "awslogs-group"         = "/ecs/${var.project_name}-${var.environment}-frontend"
+          "awslogs-group"         = aws_cloudwatch_log_group.frontend.name
           "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "frontend"
+          "awslogs-create-group"  = "true" //automatically create it if it doesnt exist
         }
       }
     }
   ])
-}
-
-resource "aws_ecs_service" "frontend" {
-  name                               = "${var.project_name}-${var.environment}-frontend"
-  cluster                            = aws_ecs_cluster.main.id
-  task_definition                    = aws_ecs_task_definition.frontend.arn
-  desired_count                      = var.frontend_desired_count
-  launch_type                        = "FARGATE"
-
-  load_balancer {
-    target_group_arn = aws_lb_target_group.frontend.arn
-    container_name   = "frontend"
-    container_port   = 80
-  }
-
-  network_configuration {
-    subnets          = module.vpc.private_subnets
-    security_groups  = [aws_security_group.ecs_tasks_sg.id]
-    assign_public_ip = false
+  lifecycle {
+    ignore_changes = [container_definitions] # Ignored because the CD pipeline will update each time the container image
   }
 
   tags = {
-    Project     = var.project_name
-    Environment = var.environment
+    Name = "frontend-task-definition"
   }
+
 }
-resource "aws_cloudwatch_log_group" "ecs_logs" {
-  for_each = toset(["backend", "frontend"])
 
-  name              = "/ecs/${var.project_name}-${var.environment}-${each.key}"
 
+resource "aws_cloudwatch_log_group" "frontend" {
+  name              = "/ecs/frontend-task-definition"
+  retention_in_days = 7
+  
   tags = {
-    Project     = var.project_name
-    Environment = var.environment
+    Name        = "frontend-logs"
+    Service     = "frontend"
+    Environment = "qa"
+  }
+}
+
+resource "aws_cloudwatch_log_group" "backend" {
+  name              = "/ecs/backend-task-definition"
+  retention_in_days = 7
+  
+  tags = {
+    Name        = "backend-logs"
+    Service     = "backend"
+    Environment = "qa"
   }
 }
 
 
-module "rds_postgres" {
+module "db_rds" {
   source  = "terraform-aws-modules/rds/aws"
-  version = "~> 7.0"   
+  version = "7.1.0"   
 
-  identifier = "${var.project_name}-${var.environment}-postgres"
+  identifier           = var.rds_instance_name
+  engine               = var.rds_engine
+  engine_version       = var.rds_engine_version
+  instance_class       = var.rds_instance_class  
 
-  engine               = "postgres"
-  engine_version       = "15"
-  instance_class       = var.rds_instance_class        
-  allocated_storage    = var.rds_allocated_storage
+  create_db_option_group = false
+
+  db_name  = var.rds_db_name
+  username = var.rds_db_username 
+  port     = var.rds_db_port
+  manage_master_user_password = true
+
+  vpc_security_group_ids   = [module.db_rds_sg.security_group_id]  
+  deletion_protection    = false               
+  create_db_parameter_group = false  
+
+  allocated_storage    = var.rds_db_allocated_storage
+  max_allocated_storage = var.rds_db_max_allocated_storage
   storage_type         = "gp2"              
 
-  db_name  = "tododb"
-  username = "maissen"  
-  password_wo  = aws_ssm_parameter.db_password.value
-  password_wo_version = 1
-  manage_master_user_password = false
-
- // vpc_id               = module.vpc.vpc_id
+  multi_az               = var.rds_multi_az 
+  create_db_subnet_group = true
+  db_subnet_group_name   = module.vpc.database_subnet_group
   subnet_ids           = module.vpc.private_subnets
-  vpc_security_group_ids   = [aws_security_group.rds_sg.id]   
-
-  publicly_accessible    = false
-  multi_az               = var.rds_multi_az             
-  backup_retention_period = var.rds_backup_retention_period
-  skip_final_snapshot    = true                
-  deletion_protection    = false               
-
-  create_db_subnet_group = true                
-  create_db_parameter_group = false             
-
-  enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
-
-  tags = {
-    Project     = var.project_name
-    Environment = var.environment
-  }
-  
+  depends_on = [module.vpc]
 }
-resource "aws_ssm_parameter" "db_password" {
-  name  = "/${var.project_name}-${var.environment}/db/password"
-  type  = "SecureString"   
-  value = var.db_password_ssm_value   
 
-  tags = {
-    Project     = var.project_name
-    Environment = var.environment
-  }
-}
-resource "aws_security_group" "rds_sg" {
-  name        = "${var.project_name}-rds-sg"
-  description = "Allow inbound PostgreSQL from ECS tasks"
+
+module "db_rds_sg" { # creating security groups for RDS
+  source  = "terraform-aws-modules/security-group/aws"
+  version = "5.3.1"
+
+  name        = "RDS-SG"
+  description = "Security group for RDS. Accepts traffic coming only within the vpc"
   vpc_id      = module.vpc.vpc_id
 
-  ingress {
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ecs_tasks_sg.id]
-  }
+  ingress_with_cidr_blocks = [
+    {
+      from_port   = var.rds_db_port
+      to_port     = var.rds_db_port
+      protocol    = "tcp"
+      description = "Allow bastion access"
+      cidr_blocks = var.vpc_cidr
+    }
+  ]
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  egress_with_cidr_blocks = [
+    {
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_blocks = "0.0.0.0/0"
+      description = "Allow all outbound"
+    }
+  ]
+}
 
+# ==================== SNS TOPIC FOR ALERTS ====================
+resource "aws_sns_topic" "ecs_alerts" {
+  name = "ecs-high-utilization-alerts"
+  
   tags = {
-    Project     = var.project_name
-    Environment = var.environment
+    Name        = "ecs-alerts"
+    Environment = "qa"
   }
 }
+
+# Email Subscription (Change this email to yours!)
+resource "aws_sns_topic_subscription" "email_alert" {
+  topic_arn = aws_sns_topic.ecs_alerts.arn
+  protocol  = "email"
+  endpoint  = "your.email@example.com"   # ←←← CHANGE THIS TO YOUR REAL EMAIL
+}
+
+# ==================== CLOUDWATCH ALARMS ====================
+
+# Frontend - High CPU Alarm
+resource "aws_cloudwatch_metric_alarm" "frontend_high_cpu" {
+  alarm_name          = "frontend-high-cpu-utilization"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/ECS"
+  period              = 300          # 5 minutes
+  statistic           = "Average"
+  threshold           = 75
+  alarm_description   = "Frontend service CPU is too high"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    ClusterName = var.cluster_name
+    ServiceName = "frontend-service"
+  }
+
+  alarm_actions = [aws_sns_topic.ecs_alerts.arn]
+  ok_actions    = [aws_sns_topic.ecs_alerts.arn]
+}
+
+# Frontend - High Memory Alarm
+resource "aws_cloudwatch_metric_alarm" "frontend_high_memory" {
+  alarm_name          = "frontend-high-memory-utilization"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "MemoryUtilization"
+  namespace           = "AWS/ECS"
+  period              = 300
+  statistic           = "Average"
+  threshold           = 75
+  alarm_description   = "Frontend service Memory is too high"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    ClusterName = var.cluster_name
+    ServiceName = "frontend-service"
+  }
+
+  alarm_actions = [aws_sns_topic.ecs_alerts.arn]
+  ok_actions    = [aws_sns_topic.ecs_alerts.arn]
+}
+
+# Backend - High CPU Alarm
+resource "aws_cloudwatch_metric_alarm" "backend_high_cpu" {
+  alarm_name          = "backend-high-cpu-utilization"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/ECS"
+  period              = 300
+  statistic           = "Average"
+  threshold           = 75
+  alarm_description   = "Backend service CPU is too high"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    ClusterName = var.cluster_name
+    ServiceName = "backend-service"
+  }
+
+  alarm_actions = [aws_sns_topic.ecs_alerts.arn]
+  ok_actions    = [aws_sns_topic.ecs_alerts.arn]
+}
+
+# Backend - High Memory Alarm
+resource "aws_cloudwatch_metric_alarm" "backend_high_memory" {
+  alarm_name          = "backend-high-memory-utilization"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "MemoryUtilization"
+  namespace           = "AWS/ECS"
+  period              = 300
+  statistic           = "Average"
+  threshold           = 75
+  alarm_description   = "Backend service Memory is too high"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    ClusterName = var.cluster_name
+    ServiceName = "backend-service"
+  }
+
+  alarm_actions = [aws_sns_topic.ecs_alerts.arn]
+  ok_actions    = [aws_sns_topic.ecs_alerts.arn]
+}
+
