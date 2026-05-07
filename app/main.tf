@@ -1,7 +1,7 @@
-# ECR for backend and frontend images
+# ECR for backend image
 resource "aws_ecr_repository" "backend" {
   name                 = "backend-todo"
-  image_tag_mutability = "IMMUTABLE"
+  image_tag_mutability = "IMMUTABLE_WITH_EXCLUSION"
 
   image_tag_mutability_exclusion_filter {
     filter      = "latest"
@@ -9,10 +9,10 @@ resource "aws_ecr_repository" "backend" {
   }
 }
 
-# ECR private repository
+# ECR for frontend image
 resource "aws_ecr_repository" "frontend" {
   name                 = "frontend-todo"
-  image_tag_mutability = "IMMUTABLE"
+  image_tag_mutability = "IMMUTABLE_WITH_EXCLUSION"
 
   image_tag_mutability_exclusion_filter {
     filter      = "latest"
@@ -367,6 +367,11 @@ resource "aws_appautoscaling_target" "frontend" {
   scalable_dimension = "ecs:service:DesiredCount"
   min_capacity       = var.frontend_scaling_min_capacity
   max_capacity       = var.frontend_scaling_max_capacity
+  tags               = {}
+
+  lifecycle {
+    ignore_changes = [tags, tags_all]
+  }
 
   depends_on = [module.ecs]
 }
@@ -413,6 +418,11 @@ resource "aws_appautoscaling_target" "backend" {
   scalable_dimension = "ecs:service:DesiredCount"
   min_capacity       = var.backend_scaling_min_capacity
   max_capacity       = var.backend_scaling_max_capacity
+  tags               = {}
+
+  lifecycle {
+    ignore_changes = [tags, tags_all]
+  }
 
   depends_on = [module.ecs]
 }

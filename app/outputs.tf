@@ -19,10 +19,10 @@ output "oidc_provider_arn" {
   value       = module.github_oidc.oidc_provider_arn
 }
 
-output "github_role_arn" {
-  description = "ARN of the GitHub Actions IAM role"
-  value       = module.github_oidc.oidc_role_arn
-}
+# output "github_role_arn" {
+#   description = "ARN of the GitHub Actions IAM role"
+#   value       = module.github_oidc.oidc_role_arn
+# }
 
 #########
 # VPC
