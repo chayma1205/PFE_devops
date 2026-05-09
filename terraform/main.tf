@@ -24,6 +24,8 @@ module "vpc" {
 
   enable_nat_gateway = true
   single_nat_gateway = true
+  reuse_nat_ips       = false
+  external_nat_ip_ids = []
 
   public_subnet_suffix  = "pub"
   private_subnet_suffix = "prv"
@@ -205,15 +207,31 @@ module "ecs" {
       # Target Tracking Policies (CPU + Memory)
       autoscaling_policies = {
         cpu = {
-          policy_type        = "TargetTrackingScaling"
-          target_value       = 70.0     # Scale when CPU > 70%
-          predefined_metric  = "ECSServiceAverageCPUUtilization"
+          policy_type = "TargetTrackingScaling"
+
+          target_tracking_scaling_policy_configuration = {
+            predefined_metric_specification = {
+              predefined_metric_type = "ECSServiceAverageCPUUtilization"
+            }
+
+            target_value       = 70
+            scale_in_cooldown  = 120
+            scale_out_cooldown = 30
+          }
         }
 
         memory = {
-          policy_type        = "TargetTrackingScaling"
-          target_value       = 70.0     # Scale when Memory > 70%
-          predefined_metric  = "ECSServiceAverageMemoryUtilization"
+          policy_type = "TargetTrackingScaling"
+
+          target_tracking_scaling_policy_configuration = {
+            predefined_metric_specification = {
+              predefined_metric_type = "ECSServiceAverageMemoryUtilization"
+            }
+
+            target_value       = 60
+            scale_in_cooldown  = 120
+            scale_out_cooldown = 30
+          }
         }
       }
 
@@ -242,7 +260,7 @@ module "ecs" {
         }
       }
 
-      
+    container_definitions = {}
     }
 
     backend = {
@@ -270,26 +288,34 @@ module "ecs" {
       autoscaling_max_capacity = 5
 
       autoscaling_policies = {
-        cpu = {
-          policy_type        = "TargetTrackingScaling"
-          target_value       = 70.0
-          predefined_metric  = "ECSServiceAverageCPUUtilization"
-        }
+      cpu = {
+        policy_type = "TargetTrackingScaling"
 
-        memory = {
-          policy_type        = "TargetTrackingScaling"
-          target_value       = 70.0
-          predefined_metric  = "ECSServiceAverageMemoryUtilization"
+        target_tracking_scaling_policy_configuration = {
+          predefined_metric_specification = {
+            predefined_metric_type = "ECSServiceAverageCPUUtilization"
+          }
+
+          target_value       = 70
+          scale_in_cooldown  = 300
+          scale_out_cooldown = 60
         }
       }
 
-      load_balancer = {
-        service = {
-          target_group_arn = module.back_alb.target_groups["ecs-backend-tasks-tg"].arn
-          container_name   = "backend"
-          container_port   = var.ecs_backend_tasks_port
+      memory = {
+        policy_type = "TargetTrackingScaling"
+
+        target_tracking_scaling_policy_configuration = {
+          predefined_metric_specification = {
+            predefined_metric_type = "ECSServiceAverageMemoryUtilization"
+          }
+
+          target_value       = 70
+          scale_in_cooldown  = 300
+          scale_out_cooldown = 60
         }
       }
+    }
 
       security_group_ingress_rules = {
         ingress_http = {
@@ -307,7 +333,7 @@ module "ecs" {
           cidr_ipv4   = "0.0.0.0/0"
         }
       }
-
+    container_definitions = {}
 
     }
   }
@@ -457,25 +483,32 @@ resource "aws_ecs_task_definition" "frontend" {
 
 resource "aws_cloudwatch_log_group" "frontend" {
   name              = "/ecs/frontend-task-definition"
-  retention_in_days = 7
+  //retention_in_days = 7
   
   tags = {
     Name        = "frontend-logs"
     Service     = "frontend"
     Environment = "qa"
   }
+  lifecycle {
+    ignore_changes = [retention_in_days]
+  }
 }
 
 resource "aws_cloudwatch_log_group" "backend" {
   name              = "/ecs/backend-task-definition"
-  retention_in_days = 7
+  //retention_in_days = 7
   
   tags = {
     Name        = "backend-logs"
     Service     = "backend"
     Environment = "qa"
   }
+  lifecycle {
+    ignore_changes = [retention_in_days]
+  }
 }
+
 
 
 module "db_rds" {
@@ -553,7 +586,7 @@ resource "aws_sns_topic" "ecs_alerts" {
 resource "aws_sns_topic_subscription" "email_alert" {
   topic_arn = aws_sns_topic.ecs_alerts.arn
   protocol  = "email"
-  endpoint  = "your.email@example.com"   # ←←← CHANGE THIS TO YOUR REAL EMAIL
+  endpoint  = "lamisdhaouadi25@gmail.com"   # ←←← CHANGE THIS TO YOUR REAL EMAIL
 }
 
 # ==================== CLOUDWATCH ALARMS ====================
