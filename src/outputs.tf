@@ -118,6 +118,49 @@ output "cloudwatch_dashboard_url" {
   value       = "https://${var.aws_region}.console.aws.amazon.com/cloudwatch/home?region=${var.aws_region}#dashboards:name=${aws_cloudwatch_dashboard.ecs.dashboard_name}"
 }
 
+#########
+# SNS
+#########
+
+output "sns_topic_arn" {
+  description = "ARN of the SNS topic used for ECS alerts"
+  value       = aws_sns_topic.ecs_alerts.arn
+}
+
+output "sns_topic_name" {
+  description = "Name of the SNS topic used for ECS alerts"
+  value       = aws_sns_topic.ecs_alerts.name
+}
+
+output "sns_subscribed_emails" {
+  description = "Email addresses subscribed to ECS alerts (each must confirm the AWS subscription email)"
+  value       = var.sns_alert_emails
+}
+
+#########
+# CloudWatch Alarms
+#########
+
+output "frontend_cpu_alarm_name" {
+  description = "Name of the frontend CPU CloudWatch alarm"
+  value       = aws_cloudwatch_metric_alarm.frontend_cpu_high.alarm_name
+}
+
+output "frontend_memory_alarm_name" {
+  description = "Name of the frontend memory CloudWatch alarm"
+  value       = aws_cloudwatch_metric_alarm.frontend_memory_high.alarm_name
+}
+
+output "backend_cpu_alarm_name" {
+  description = "Name of the backend CPU CloudWatch alarm"
+  value       = aws_cloudwatch_metric_alarm.backend_cpu_high.alarm_name
+}
+
+output "backend_memory_alarm_name" {
+  description = "Name of the backend memory CloudWatch alarm"
+  value       = aws_cloudwatch_metric_alarm.backend_memory_high.alarm_name
+}
+
 
 #########
 # RDS
