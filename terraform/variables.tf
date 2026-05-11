@@ -108,6 +108,66 @@ variable "backend_service_desired_tasks" {
   description = "the desired tasks number for backend tasks"
   default = 2
 }
+# FRONTEND AUTOSCALING
+variable "frontend_scaling_min_capacity" {
+  type    = number
+  default = 2
+}
+
+variable "frontend_scaling_max_capacity" {
+  type    = number
+  default = 5
+}
+
+variable "frontend_scaling_cpu_threshold" {
+  type    = number
+  default = 60
+}
+variable "frontend_scaling_memory_threshold" {
+  type    = number
+  default = 60
+}
+
+variable "frontend_scale_in_cooldown" {
+  type    = number
+  default = 120
+}
+
+variable "frontend_scale_out_cooldown" {
+  type    = number
+  default = 30
+}
+
+# BACKEND AUTOSCALING
+variable "backend_scaling_min_capacity" {
+  type    = number
+  default = 2
+}
+
+variable "backend_scaling_max_capacity" {
+  type    = number
+  default = 5
+}
+
+variable "backend_scaling_cpu_threshold" {
+  type    = number
+  default = 70
+}
+
+variable "backend_scaling_memory_threshold" {
+  type    = number
+  default = 70
+}
+
+variable "backend_scale_in_cooldown" {
+  type    = number
+  default = 300
+}
+
+variable "backend_scale_out_cooldown" {
+  type    = number
+  default = 60
+}
 
 #########
 # RDS
@@ -170,4 +230,20 @@ variable "rds_multi_az" {
   type        = bool
   description = "Specifies if the RDS instance is multi-AZ"
   default     = false
+}
+variable "sns_alert_emails" {
+  type = list(string)
+
+  default = [
+    "lamisdhaouadi25@gmail.com"
+  ]
+}
+variable "cloudwatch_dashboard_name" {
+  type    = string
+  default = "ecs-monitoring-dashboard"
+}
+
+variable "cloudwatch_dashboard_period" {
+  type    = number
+  default = 300
 }

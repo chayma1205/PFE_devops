@@ -193,16 +193,15 @@ module "ecs" {
       task_exec_iam_role_arn    = module.iam_ecs_task_exec_role.arn
       create_task_exec_iam_role = false
 
-      desired_count = var.frontend_service_desired_tasks
+      desired_count = var.frontend_scaling_min_capacity
       
       subnet_ids    = module.vpc.private_subnets
       vpc_id = module.vpc.vpc_id
 
 
-      # remove asg configs
       enable_autoscaling       = true
-      autoscaling_min_capacity = 2
-      autoscaling_max_capacity = 5
+      autoscaling_min_capacity = var.frontend_scaling_min_capacity
+      autoscaling_max_capacity = var.frontend_scaling_max_capacity
 
       # Target Tracking Policies (CPU + Memory)
       autoscaling_policies = {
@@ -214,9 +213,9 @@ module "ecs" {
               predefined_metric_type = "ECSServiceAverageCPUUtilization"
             }
 
-            target_value       = 70
-            scale_in_cooldown  = 120
-            scale_out_cooldown = 30
+            target_value       = var.frontend_scaling_cpu_threshold
+            scale_in_cooldown  = var.frontend_scale_in_cooldown
+            scale_out_cooldown = var.frontend_scale_out_cooldown
           }
         }
 
@@ -228,9 +227,9 @@ module "ecs" {
               predefined_metric_type = "ECSServiceAverageMemoryUtilization"
             }
 
-            target_value       = 60
-            scale_in_cooldown  = 120
-            scale_out_cooldown = 30
+            target_value       = var.frontend_scaling_memory_threshold
+            scale_in_cooldown  = var.frontend_scale_in_cooldown
+            scale_out_cooldown = var.frontend_scale_out_cooldown
           }
         }
       }
@@ -275,7 +274,7 @@ module "ecs" {
       task_exec_iam_role_arn    = module.iam_ecs_task_exec_role.arn
       create_task_exec_iam_role = false
 
-      desired_count    = var.backend_service_desired_tasks
+      desired_count    = var.backend_scaling_min_capacity
 
       subnet_ids       = module.vpc.private_subnets
       assign_public_ip = false
@@ -284,8 +283,8 @@ module "ecs" {
 
       # add as configs
       enable_autoscaling       = true
-      autoscaling_min_capacity = 2
-      autoscaling_max_capacity = 5
+      autoscaling_min_capacity = var.backend_scaling_min_capacity
+      autoscaling_max_capacity = var.backend_scaling_max_capacity
 
       autoscaling_policies = {
       cpu = {
@@ -296,9 +295,9 @@ module "ecs" {
             predefined_metric_type = "ECSServiceAverageCPUUtilization"
           }
 
-          target_value       = 70
-          scale_in_cooldown  = 300
-          scale_out_cooldown = 60
+          target_value       = var.backend_scaling_cpu_threshold
+          scale_in_cooldown  = var.backend_scale_in_cooldown
+          scale_out_cooldown = var.backend_scale_out_cooldown
         }
       }
 
@@ -310,9 +309,9 @@ module "ecs" {
             predefined_metric_type = "ECSServiceAverageMemoryUtilization"
           }
 
-          target_value       = 70
-          scale_in_cooldown  = 300
-          scale_out_cooldown = 60
+          target_value       = var.backend_scaling_memory_threshold
+          scale_in_cooldown  = var.backend_scale_in_cooldown
+          scale_out_cooldown = var.backend_scale_out_cooldown
         }
       }
     }
@@ -583,24 +582,139 @@ resource "aws_sns_topic" "ecs_alerts" {
 }
 
 # Email Subscription (Change this email to yours!)
-resource "aws_sns_topic_subscription" "email_alert" {
+resource "aws_sns_topic_subscription" "email_alerts" {
+  for_each = toset(var.sns_alert_emails)
+
   topic_arn = aws_sns_topic.ecs_alerts.arn
   protocol  = "email"
-  endpoint  = "lamisdhaouadi25@gmail.com"   # ←←← CHANGE THIS TO YOUR REAL EMAIL
+  endpoint  = each.value
 }
+# ==================== CLOUDWATCH DASHBOARD ====================
 
+resource "aws_cloudwatch_dashboard" "ecs" {
+  dashboard_name = var.cloudwatch_dashboard_name
+
+  dashboard_body = jsonencode({
+    widgets = [
+
+      # ECS CPU
+      {
+        type   = "metric"
+        x      = 0
+        y      = 0
+        width  = 12
+        height = 6
+
+        properties = {
+          title   = "ECS CPU Utilization"
+          view    = "timeSeries"
+          stacked = false
+          region  = var.aws_region
+          period  = var.cloudwatch_dashboard_period
+          stat    = "Average"
+
+          metrics = [
+            [
+              "AWS/ECS",
+              "CPUUtilization",
+              "ClusterName",
+              var.cluster_name,
+              "ServiceName",
+              "frontend-service",
+              {
+                label = "Frontend CPU"
+              }
+            ],
+
+            [
+              "AWS/ECS",
+              "CPUUtilization",
+              "ClusterName",
+              var.cluster_name,
+              "ServiceName",
+              "backend-service",
+              {
+                label = "Backend CPU"
+              }
+            ]
+          ]
+
+          yAxis = {
+            left = {
+              min = 0
+              max = 100
+            }
+          }
+        }
+      },
+
+      # ECS MEMORY
+      {
+        type   = "metric"
+        x      = 12
+        y      = 0
+        width  = 12
+        height = 6
+
+        properties = {
+          title   = "ECS Memory Utilization"
+          view    = "timeSeries"
+          stacked = false
+          region  = var.aws_region
+          period  = var.cloudwatch_dashboard_period
+          stat    = "Average"
+
+          metrics = [
+            [
+              "AWS/ECS",
+              "MemoryUtilization",
+              "ClusterName",
+              var.cluster_name,
+              "ServiceName",
+              "frontend-service",
+              {
+                label = "Frontend Memory"
+              }
+            ],
+
+            [
+              "AWS/ECS",
+              "MemoryUtilization",
+              "ClusterName",
+              var.cluster_name,
+              "ServiceName",
+              "backend-service",
+              {
+                label = "Backend Memory"
+              }
+            ]
+          ]
+
+          yAxis = {
+            left = {
+              min = 0
+              max = 100
+            }
+          }
+        }
+      }
+    ]
+  })
+
+  depends_on = [module.ecs]
+}
 # ==================== CLOUDWATCH ALARMS ====================
 
 # Frontend - High CPU Alarm
 resource "aws_cloudwatch_metric_alarm" "frontend_high_cpu" {
   alarm_name          = "frontend-high-cpu-utilization"
-  comparison_operator = "GreaterThanThreshold"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  threshold           = var.frontend_scaling_cpu_threshold
   evaluation_periods  = 2
   metric_name         = "CPUUtilization"
   namespace           = "AWS/ECS"
   period              = 300          # 5 minutes
   statistic           = "Average"
-  threshold           = 75
   alarm_description   = "Frontend service CPU is too high"
   treat_missing_data  = "notBreaching"
 
@@ -616,13 +730,13 @@ resource "aws_cloudwatch_metric_alarm" "frontend_high_cpu" {
 # Frontend - High Memory Alarm
 resource "aws_cloudwatch_metric_alarm" "frontend_high_memory" {
   alarm_name          = "frontend-high-memory-utilization"
-  comparison_operator = "GreaterThanThreshold"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 2
   metric_name         = "MemoryUtilization"
   namespace           = "AWS/ECS"
   period              = 300
   statistic           = "Average"
-  threshold           = 75
+  threshold           = var.frontend_scaling_memory_threshold
   alarm_description   = "Frontend service Memory is too high"
   treat_missing_data  = "notBreaching"
 
@@ -638,13 +752,13 @@ resource "aws_cloudwatch_metric_alarm" "frontend_high_memory" {
 # Backend - High CPU Alarm
 resource "aws_cloudwatch_metric_alarm" "backend_high_cpu" {
   alarm_name          = "backend-high-cpu-utilization"
-  comparison_operator = "GreaterThanThreshold"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 2
   metric_name         = "CPUUtilization"
   namespace           = "AWS/ECS"
   period              = 300
   statistic           = "Average"
-  threshold           = 75
+  threshold           = var.backend_scaling_cpu_threshold
   alarm_description   = "Backend service CPU is too high"
   treat_missing_data  = "notBreaching"
 
@@ -660,13 +774,13 @@ resource "aws_cloudwatch_metric_alarm" "backend_high_cpu" {
 # Backend - High Memory Alarm
 resource "aws_cloudwatch_metric_alarm" "backend_high_memory" {
   alarm_name          = "backend-high-memory-utilization"
-  comparison_operator = "GreaterThanThreshold"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 2
   metric_name         = "MemoryUtilization"
   namespace           = "AWS/ECS"
   period              = 300
   statistic           = "Average"
-  threshold           = 75
+  threshold           = var.backend_scaling_memory_threshold
   alarm_description   = "Backend service Memory is too high"
   treat_missing_data  = "notBreaching"
 
