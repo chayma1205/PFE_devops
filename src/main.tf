@@ -274,11 +274,11 @@ resource "aws_ecs_task_definition" "frontend" {
 
 # Frontend CloudWatch Log Group
 resource "aws_cloudwatch_log_group" "frontend" {
-  name              = "/ecs/frontend-task-definition"
+  name              = "/ecs/frontend-group"
   retention_in_days = 0
 
   tags = {
-    Name = "frontend-task-definition"
+    Name = "frontend-group"
   }
 }
 
@@ -352,11 +352,11 @@ resource "aws_ecs_task_definition" "backend" {
 
 # Backend CloudWatch Log Group
 resource "aws_cloudwatch_log_group" "backend" {
-  name              = "/ecs/backend-task-definition"
+  name              = "/ecs/backend-group"
   retention_in_days = 0
 
   tags = {
-    Name = "backend-task-definition"
+    Name = "backend-group"
   }
 }
 
@@ -385,8 +385,6 @@ resource "aws_appautoscaling_policy" "frontend_cpu" {
 
   target_tracking_scaling_policy_configuration {
     target_value       = var.frontend_scaling_cpu_threshold
-    scale_in_cooldown  = 300
-    scale_out_cooldown = 60
 
     predefined_metric_specification {
       predefined_metric_type = "ECSServiceAverageCPUUtilization"
@@ -403,8 +401,6 @@ resource "aws_appautoscaling_policy" "frontend_memory" {
 
   target_tracking_scaling_policy_configuration {
     target_value       = var.frontend_scaling_memory_threshold
-    scale_in_cooldown  = 300
-    scale_out_cooldown = 60
 
     predefined_metric_specification {
       predefined_metric_type = "ECSServiceAverageMemoryUtilization"
@@ -436,8 +432,6 @@ resource "aws_appautoscaling_policy" "backend_cpu" {
 
   target_tracking_scaling_policy_configuration {
     target_value       = var.backend_scaling_cpu_threshold
-    scale_in_cooldown  = 300
-    scale_out_cooldown = 60
 
     predefined_metric_specification {
       predefined_metric_type = "ECSServiceAverageCPUUtilization"
@@ -454,8 +448,6 @@ resource "aws_appautoscaling_policy" "backend_memory" {
 
   target_tracking_scaling_policy_configuration {
     target_value       = var.backend_scaling_memory_threshold
-    scale_in_cooldown  = 300
-    scale_out_cooldown = 60
 
     predefined_metric_specification {
       predefined_metric_type = "ECSServiceAverageMemoryUtilization"
