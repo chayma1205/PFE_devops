@@ -463,6 +463,113 @@ resource "aws_appautoscaling_policy" "backend_memory" {
   }
 }
 
+# SNS Topic for ECS alerts
+resource "aws_sns_topic" "ecs_alerts" {
+  name = var.sns_topic_name
+}
+
+resource "aws_sns_topic_subscription" "email_alerts" {
+  for_each = toset(var.sns_alert_emails)
+
+  topic_arn = aws_sns_topic.ecs_alerts.arn
+  protocol  = "email"
+  endpoint  = each.value
+}
+
+# CloudWatch frontend alerts
+resource "aws_cloudwatch_metric_alarm" "frontend_cpu_high" {
+  alarm_name          = "frontend-cpu-high"
+  alarm_description   = "Frontend ECS CPU utilization exceeded ${var.frontend_scaling_cpu_threshold}%"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = var.alarm_evaluation_periods
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/ECS"
+  period              = var.alarm_period
+  statistic           = "Average"
+  threshold           = var.frontend_scaling_cpu_threshold
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    ClusterName = module.ecs.cluster_name
+    ServiceName = "frontend-service"
+  }
+
+  alarm_actions = [aws_sns_topic.ecs_alerts.arn]
+  ok_actions    = [aws_sns_topic.ecs_alerts.arn]
+
+  depends_on = [module.ecs]
+}
+
+resource "aws_cloudwatch_metric_alarm" "frontend_memory_high" {
+  alarm_name          = "frontend-memory-high"
+  alarm_description   = "Frontend ECS memory utilization exceeded ${var.frontend_scaling_memory_threshold}%"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = var.alarm_evaluation_periods
+  metric_name         = "MemoryUtilization"
+  namespace           = "AWS/ECS"
+  period              = var.alarm_period
+  statistic           = "Average"
+  threshold           = var.frontend_scaling_memory_threshold
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    ClusterName = module.ecs.cluster_name
+    ServiceName = "frontend-service"
+  }
+
+  alarm_actions = [aws_sns_topic.ecs_alerts.arn]
+  ok_actions    = [aws_sns_topic.ecs_alerts.arn]
+
+  depends_on = [module.ecs]
+}
+
+# CloudWatch backend alerts
+resource "aws_cloudwatch_metric_alarm" "backend_cpu_high" {
+  alarm_name          = "backend-cpu-high"
+  alarm_description   = "Backend ECS CPU utilization exceeded ${var.backend_scaling_cpu_threshold}%"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = var.alarm_evaluation_periods
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/ECS"
+  period              = var.alarm_period
+  statistic           = "Average"
+  threshold           = var.backend_scaling_cpu_threshold
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    ClusterName = module.ecs.cluster_name
+    ServiceName = "backend-service"
+  }
+
+  alarm_actions = [aws_sns_topic.ecs_alerts.arn]
+  ok_actions    = [aws_sns_topic.ecs_alerts.arn]
+
+  depends_on = [module.ecs]
+}
+
+resource "aws_cloudwatch_metric_alarm" "backend_memory_high" {
+  alarm_name          = "backend-memory-high"
+  alarm_description   = "Backend ECS memory utilization exceeded ${var.backend_scaling_memory_threshold}%"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = var.alarm_evaluation_periods
+  metric_name         = "MemoryUtilization"
+  namespace           = "AWS/ECS"
+  period              = var.alarm_period
+  statistic           = "Average"
+  threshold           = var.backend_scaling_memory_threshold
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    ClusterName = module.ecs.cluster_name
+    ServiceName = "backend-service"
+  }
+
+  alarm_actions = [aws_sns_topic.ecs_alerts.arn]
+  ok_actions    = [aws_sns_topic.ecs_alerts.arn]
+
+  depends_on = [module.ecs]
+}
+
 # ECS Cluster and Service
 module "ecs" {
   source = "terraform-aws-modules/ecs/aws"

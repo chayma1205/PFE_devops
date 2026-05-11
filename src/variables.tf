@@ -189,6 +189,38 @@ variable "cloudwatch_logs_limit" {
 }
 
 #########
+# SNS Alerting
+#########
+
+variable "sns_topic_name" {
+  type        = string
+  description = "Name of the SNS topic used for ECS scaling alerts"
+  default     = "ecs-alerts"
+}
+
+variable "sns_alert_emails" {
+  type        = list(string)
+  description = "List of email addresses that will receive ECS scaling alerts. Each address must confirm the AWS subscription email before alerts are delivered."
+  default     = []
+}
+
+#########
+# CloudWatch Alarms
+#########
+
+variable "alarm_evaluation_periods" {
+  type        = number
+  description = "Number of consecutive periods the metric must breach the threshold before the alarm fires"
+  default     = 2
+}
+
+variable "alarm_period" {
+  type        = number
+  description = "Evaluation period in seconds for CloudWatch alarms (must be a multiple of 60)"
+  default     = 60
+}
+  
+#########
 # RDS
 #########
 
