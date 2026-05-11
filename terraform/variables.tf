@@ -125,7 +125,7 @@ variable "frontend_scaling_cpu_threshold" {
 }
 variable "frontend_scaling_memory_threshold" {
   type    = number
-  default = 60
+  default = 10
 }
 
 variable "frontend_scale_in_cooldown" {
