@@ -149,6 +149,17 @@ module "back_alb" {
       port              = var.ecs_backend_tasks_port
       target_type       = "ip"
       create_attachment = false # avoid attatching ips when creating the alb
+      health_check = {
+      enabled             = true
+      healthy_threshold   = 2
+      interval            = 30
+      matcher             = "200"
+      path                = "/health" 
+      port                = "traffic-port"
+      protocol            = "HTTP"
+      timeout             = 5
+      unhealthy_threshold = 3
+    }
     }
   }
 
@@ -263,58 +274,58 @@ module "ecs" {
     }
 
     backend = {
-
       name   = "backend-service"
       family = "backend-task-definition"
 
-      create_task_definition = false
+      create_task_definition         = false
       ignore_task_definition_changes = true
-      task_definition_arn    = aws_ecs_task_definition.backend.arn
+      task_definition_arn            = aws_ecs_task_definition.backend.arn
 
       task_exec_iam_role_arn    = module.iam_ecs_task_exec_role.arn
       create_task_exec_iam_role = false
 
       desired_count    = var.backend_scaling_min_capacity
-
       subnet_ids       = module.vpc.private_subnets
       assign_public_ip = false
-      vpc_id = module.vpc.vpc_id
+      vpc_id           = module.vpc.vpc_id
 
-
-      # add as configs
       enable_autoscaling       = true
       autoscaling_min_capacity = var.backend_scaling_min_capacity
       autoscaling_max_capacity = var.backend_scaling_max_capacity
 
       autoscaling_policies = {
-      cpu = {
-        policy_type = "TargetTrackingScaling"
-
-        target_tracking_scaling_policy_configuration = {
-          predefined_metric_specification = {
-            predefined_metric_type = "ECSServiceAverageCPUUtilization"
+        cpu = {
+          policy_type = "TargetTrackingScaling"
+          target_tracking_scaling_policy_configuration = {
+            predefined_metric_specification = {
+              predefined_metric_type = "ECSServiceAverageCPUUtilization"
+            }
+            target_value       = var.backend_scaling_cpu_threshold
+            scale_in_cooldown  = var.backend_scale_in_cooldown
+            scale_out_cooldown = var.backend_scale_out_cooldown
           }
-
-          target_value       = var.backend_scaling_cpu_threshold
-          scale_in_cooldown  = var.backend_scale_in_cooldown
-          scale_out_cooldown = var.backend_scale_out_cooldown
+        }
+        memory = {
+          policy_type = "TargetTrackingScaling"
+          target_tracking_scaling_policy_configuration = {
+            predefined_metric_specification = {
+              predefined_metric_type = "ECSServiceAverageMemoryUtilization"
+            }
+            target_value       = var.backend_scaling_memory_threshold
+            scale_in_cooldown  = var.backend_scale_in_cooldown
+            scale_out_cooldown = var.backend_scale_out_cooldown
+          }
         }
       }
 
-      memory = {
-        policy_type = "TargetTrackingScaling"
-
-        target_tracking_scaling_policy_configuration = {
-          predefined_metric_specification = {
-            predefined_metric_type = "ECSServiceAverageMemoryUtilization"
-          }
-
-          target_value       = var.backend_scaling_memory_threshold
-          scale_in_cooldown  = var.backend_scale_in_cooldown
-          scale_out_cooldown = var.backend_scale_out_cooldown
+      # ✅ FIXED: moved inside backend block, and added .arn
+      load_balancer = {
+        service = {
+          target_group_arn = module.back_alb.target_groups["ecs-backend-tasks-tg"].arn
+          container_name   = "backend"
+          container_port   = var.ecs_backend_tasks_port
         }
       }
-    }
 
       security_group_ingress_rules = {
         ingress_http = {
@@ -332,11 +343,12 @@ module "ecs" {
           cidr_ipv4   = "0.0.0.0/0"
         }
       }
-    container_definitions = {}
 
+      container_definitions = {}
     }
-  }
 
+    
+  }
   depends_on = [
     module.vpc,
     module.front_alb,
@@ -402,7 +414,6 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "DB_USER",     value = var.rds_db_username },
         { name = "DB_ENGINE",   value = "postgres" },           # Maybe the app checks this
         //{ name = "DB_DIALECT",  value = "postgresql" }            # Some apps use this
-        { name = "DATABASE_URL", value = "postgresql://${var.rds_db_username}:dummy@${module.db_rds.db_instance_address}:${module.db_rds.db_instance_port}/${module.db_rds.db_instance_name}" }      
       ]
       secrets = [
         //{name      = "DB_USER", valueFrom = "${module.db_rds.db_instance_master_user_secret_arn}:username::"},
