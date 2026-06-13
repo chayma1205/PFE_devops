@@ -255,7 +255,7 @@ resource "aws_ecs_task_definition" "frontend" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = "/ecs/frontend-task-definition"
+          "awslogs-group"         = "/ecs/frontend-group"
           "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "ecs"
         }
@@ -333,7 +333,7 @@ resource "aws_ecs_task_definition" "backend" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = "/ecs/backend-task-definition"
+          "awslogs-group"         = "/ecs/backend-tasks" 
           "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "ecs"
         }
@@ -352,7 +352,7 @@ resource "aws_ecs_task_definition" "backend" {
 
 # Backend CloudWatch Log Group
 resource "aws_cloudwatch_log_group" "backend" {
-  name              = "/ecs/backend-group"
+  name              = "/ecs/backend-tasks" 
   retention_in_days = 0
 
   tags = {
